@@ -246,7 +246,14 @@ export function evaluateLifeRun(state: GameState): EvaluationResult {
     goalsAchievedCount: achievedCount,
     goalsTotalCount: totalGoals,
     pensionCoveragePercent: Math.min(100, Math.round(((statutoryNet + (bavBalance / 10000) * 35) / Math.max(1, state.pension?.targetRetirementNetMonthly || 1800)) * 100)),
-    co2Score: 85,
+    co2Score: (() => {
+      const mobility = state.activeMobility;
+      if (mobility === 'PUBLIC_TRANSIT') return 90;
+      if (mobility === 'CAR_CASH') return 45;
+      if (mobility === 'CAR_FINANCED') return 40;
+      if (mobility === 'CAR_LEASING') return 35;
+      return 50;
+    })(),
     keyStrengths: finDimension.strengths,
   };
 

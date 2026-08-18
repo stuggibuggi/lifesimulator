@@ -453,6 +453,8 @@ export interface GameState {
   currentAge: number;
   currentYear: number; // Alter 16 bis 67 (Jahr 1 bis 51)
   currentMonth: number; // 1 bis 12
+  /** Optional scenario end age (defaults to 67 for full life runs). */
+  scenarioEndAge?: number;
   isPaused: boolean;
   speed: 1 | 2 | 5;
   isGameOver: boolean;

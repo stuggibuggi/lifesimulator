@@ -43,7 +43,7 @@ export const WelcomeScreen: React.FC = () => {
 
         <div className="inline-flex items-center gap-2 bg-sakura-100 text-sakura-600 px-4 py-1.5 rounded-full font-bold text-sm mb-4 border border-sakura-200">
           <Sparkles className="w-4 h-4" />
-          KI-gestütztes Lebenssimulationsspiel für Schüler & Schulklassen
+          Lebenssimulationsspiel für Schüler & Schulklassen
         </div>
 
         <h1 className="text-4xl md:text-6xl font-black text-gray-800 tracking-tight mb-4">
@@ -56,7 +56,7 @@ export const WelcomeScreen: React.FC = () => {
         </p>
 
         {/* Central Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6 flex-wrap">
           <button
             onClick={startNewGame}
             className="w-full sm:w-auto bg-gradient-to-r from-matcha-500 to-matcha-600 hover:from-matcha-600 hover:to-matcha-700 text-white font-extrabold text-lg px-8 py-4 rounded-2xl shadow-cozy-hover transition-all duration-200 flex items-center justify-center gap-3 border-2 border-matcha-400 active:scale-95"
@@ -66,14 +66,25 @@ export const WelcomeScreen: React.FC = () => {
           </button>
 
           <button
-            onClick={() => {
-              startNewGame();
-              setActiveModal('SCENARIO_SELECTION_MODAL');
-            }}
+            onClick={() => setActiveModal('SCENARIO_SELECTION_MODAL')}
             className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-base px-6 py-4 rounded-2xl shadow-cozy border-2 border-amber-400 transition-all duration-200 flex items-center justify-center gap-2 active:scale-95"
           >
             <Target className="w-5 h-5" />
             Unterrichts-Szenarien (45 Min.)
+          </button>
+
+          <button
+            onClick={() => setActiveModal('JOIN_CLASS_MODAL')}
+            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-base px-6 py-4 rounded-2xl shadow-cozy border-2 border-indigo-500 transition-all duration-200 flex items-center justify-center gap-2 active:scale-95"
+          >
+            Klasse beitreten
+          </button>
+
+          <button
+            onClick={() => setActiveModal('TEACHER_AUTH_MODAL')}
+            className="w-full sm:w-auto bg-white hover:bg-gray-50 text-indigo-800 font-extrabold text-base px-6 py-4 rounded-2xl shadow-cozy border-2 border-indigo-200 transition-all duration-200 flex items-center justify-center gap-2 active:scale-95"
+          >
+            Lehrer anmelden
           </button>
 
           <button

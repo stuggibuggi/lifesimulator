@@ -9,7 +9,10 @@
   ],
   "scripts": {
     "dev": "npm run dev --workspace=apps/player-web",
-    "build": "npm run build --workspaces",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "start:api": "npm run start --workspace=apps/api",
+    "migrate:api": "npm run migrate --workspace=apps/api",
+    "build": "npm run build --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest"
   },

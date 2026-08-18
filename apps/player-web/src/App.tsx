@@ -23,14 +23,24 @@ import { ScenarioSelectionModal } from './components/ScenarioSelectionModal';
 import { TransactionsModal } from './components/TransactionsModal';
 import { PhoneModal } from './components/PhoneModal';
 import { EvaluationView } from './components/EvaluationView';
+import { ClassroomAuthModal } from './components/ClassroomAuthModal';
 
 export const App: React.FC = () => {
-  const { gamePhase, gameState, activeModal, setActiveModal } = useGameStore();
+  const { gamePhase, gameState, activeModal, setActiveModal, closeModal } = useGameStore();
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] flex flex-col font-sans">
       {/* 1. Welcome Screen */}
       {gamePhase === 'WELCOME' && <WelcomeScreen />}
+
+      {/* Scenario picker must work from welcome, not only during PLAYING */}
+      {activeModal === 'SCENARIO_SELECTION_MODAL' && <ScenarioSelectionModal />}
+      {activeModal === 'JOIN_CLASS_MODAL' && (
+        <ClassroomAuthModal mode="JOIN" onClose={closeModal} />
+      )}
+      {activeModal === 'TEACHER_AUTH_MODAL' && (
+        <ClassroomAuthModal mode="TEACHER" onClose={closeModal} />
+      )}
 
       {/* 2. Character Setup Screen */}
       {gamePhase === 'CHARACTER_CREATION' && <CharacterSetupScreen />}
@@ -182,7 +192,6 @@ export const App: React.FC = () => {
           {activeModal === 'PENSION_MODAL' && <PensionModal />}
           {activeModal === 'TAX_MODAL' && <TaxModal />}
           {activeModal === 'CLASSROOM_MODAL' && <ClassroomModal />}
-          {activeModal === 'SCENARIO_SELECTION_MODAL' && <ScenarioSelectionModal />}
           {activeModal === 'MARKET' && <MobilityModal />}
           {activeModal === 'MOBILITY_MODAL' && <MobilityModal />}
           {activeModal === 'BUDGET_MODAL' && <BudgetModal />}

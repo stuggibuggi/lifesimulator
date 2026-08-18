@@ -36,6 +36,8 @@ import {
 import { ALL_LIFE_EVENTS, ALL_LIFE_GOALS, CAREER_OPTIONS, EducationCareerOption, EDUCATIONAL_SCENARIOS } from '@goal/game-content';
 import { sound } from '../audio/soundSynth';
 import confetti from 'canvas-confetti';
+import { getStudentSession, saveCloudRun } from '../api/client';
+import { evaluateLifeRun } from '@goal/scoring-engine';
 
 export type GamePhase =
   | 'WELCOME'
@@ -60,6 +62,8 @@ export type ActiveModal =
   | 'CLASSROOM_MODAL'
   | 'SCENARIO_SELECTION_MODAL'
   | 'PHONE_MODAL'
+  | 'TEACHER_AUTH_MODAL'
+  | 'JOIN_CLASS_MODAL'
   | null;
 
 interface GameStoreState {
@@ -110,6 +114,41 @@ interface GameStoreState {
 }
 
 const STORAGE_KEY = 'GOAL_LIFE_SIM_SAVE_V1';
+let cloudSaveCounter = 0;
+
+function persistLocal(state: GameState) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore
+  }
+}
+
+async function maybeCloudSave(state: GameState, force = false) {
+  if (!getStudentSession()) return;
+  cloudSaveCounter += 1;
+  const shouldSave =
+    force ||
+    state.isGameOver ||
+    Boolean(state.activeEvent) ||
+    cloudSaveCounter % 12 === 0;
+  if (!shouldSave) return;
+
+  try {
+    const extras = state.isGameOver
+      ? (() => {
+          const evaluation = evaluateLifeRun(state);
+          return {
+            overallScore: evaluation.overallScore,
+            evaluation,
+          };
+        })()
+      : undefined;
+    await saveCloudRun(state, extras);
+  } catch {
+    // Offline / API down → localStorage remains source of truth
+  }
+}
 
 function sanitizeGameState(state: any): GameState {
   return {
@@ -214,8 +253,101 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     const seed = Date.now();
     const rng = new SeededRandom(seed);
-    const state = createInitialGameState(defaultCharacter, goals, seed);
+    let state = createInitialGameState(defaultCharacter, goals, seed);
     state.currentAge = scenario.startAge;
+    state.scenarioEndAge = scenario.endAge;
+    state.currentYear = Math.max(1, scenario.startAge - 15);
+
+    if (scenario.id === 'SCENARIO_SCHULDENFALLE') {
+      state.bankAccount.giroBalance = -1800;
+      state.bankAccount.dispoWarningStage = 'ORANGE';
+      state.loans = [
+        {
+          id: 'loan_bnpl_1',
+          type: 'BNPL',
+          title: 'BNPL Ratenkauf Elektronik',
+          principalInitial: 450,
+          principalRemaining: 450,
+          monthlyRate: 75,
+          nominalInterestAnnual: 0.129,
+          effectiveInterestAnnual: 0.137,
+          totalInterestProjected: 75,
+          remainingMonths: 6,
+          totalInterestPaid: 0,
+        },
+        {
+          id: 'loan_bnpl_2',
+          type: 'BNPL',
+          title: 'BNPL Mode-Abo',
+          principalInitial: 280,
+          principalRemaining: 280,
+          monthlyRate: 70,
+          nominalInterestAnnual: 0.149,
+          effectiveInterestAnnual: 0.16,
+          totalInterestProjected: 60,
+          remainingMonths: 4,
+          totalInterestPaid: 0,
+        },
+      ];
+      state.budget.loanRatesTotal = 145;
+      state.budget.totalFixedExpenses += 145;
+    }
+
+    if (scenario.id === 'SCENARIO_AUSBILDUNG') {
+      const ausbildung = CAREER_OPTIONS.find((c) => c.id === 'PATH_AUSBILDUNG');
+      if (ausbildung) {
+        state = changeCareerPath(
+          state,
+          {
+            type: ausbildung.type,
+            title: ausbildung.title,
+            branch: ausbildung.branch,
+            currentYear: 1,
+            durationYears: ausbildung.durationYears,
+            monthlySalaryGross: ausbildung.monthlySalaryGross,
+            monthlySalaryNet: ausbildung.monthlySalaryNet,
+            tuitionOrTrainingCostMonthly: 0,
+            stressFactor: ausbildung.stressFactor,
+            timeCommitmentHoursWeekly: ausbildung.timeCommitmentHoursWeekly,
+            careerAdvancementLevel: 0,
+            isCompleted: false,
+          },
+          ausbildung.rentEstimated,
+          ausbildung.mobilityEstimated
+        );
+      }
+    }
+
+    if (scenario.id === 'SCENARIO_EIGENHEIM') {
+      const job = CAREER_OPTIONS.find((c) => c.id === 'PATH_QUEREINSTIEG') || CAREER_OPTIONS[0];
+      state = changeCareerPath(
+        state,
+        {
+          type: job.type,
+          title: job.title,
+          branch: job.branch,
+          currentYear: 3,
+          durationYears: job.durationYears,
+          monthlySalaryGross: job.startingGrossAfterGraduation || job.monthlySalaryGross,
+          monthlySalaryNet: job.startingNetAfterGraduation || job.monthlySalaryNet,
+          tuitionOrTrainingCostMonthly: 0,
+          stressFactor: job.stressFactor,
+          timeCommitmentHoursWeekly: job.timeCommitmentHoursWeekly,
+          careerAdvancementLevel: 1,
+          isCompleted: true,
+        },
+        470,
+        49
+      );
+      state.housing = {
+        type: 'SHARED_APARTMENT',
+        title: 'WG-Zimmer (Wohngemeinschaft)',
+        monthlyWarmRent: 470,
+        coldRent: 380,
+        utilitiesCost: 90,
+        depositPaid: 1140,
+      };
+    }
 
     set({
       gameState: state,
@@ -311,6 +443,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         gameState: result.nextState,
         gamePhase: 'EVALUATION',
       });
+      persistLocal(result.nextState);
+      void maybeCloudSave(result.nextState, true);
       return;
     }
 
@@ -319,11 +453,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       prng: rng,
     });
 
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(result.nextState));
-    } catch {
-      // Ignore
-    }
+    persistLocal(result.nextState);
+    void maybeCloudSave(result.nextState, Boolean(result.triggeredEvent));
   },
 
   stepYear: () => {
@@ -388,6 +519,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }
 
     set({ gameState: updatedState });
+    persistLocal(updatedState);
+    void maybeCloudSave(updatedState, true);
   },
 
   handleToggleInsurance: (insurance, deductible, healthPreCondition) => {
@@ -505,7 +638,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const { gameState } = get();
     if (!gameState) return;
     sound.playPop();
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(gameState));
+    persistLocal(gameState);
+    void maybeCloudSave(gameState, true);
   },
 
   loadFromLocalStorage: () => {

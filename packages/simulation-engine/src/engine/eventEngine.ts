@@ -150,6 +150,7 @@ export function applyEventChoice(
     budget: updatedBudget,
     metrics: updatedMetrics,
     activeEvent: null,
+    isPaused: true,
     pastEvents: [
       ...state.pastEvents,
       {

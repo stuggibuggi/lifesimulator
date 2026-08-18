@@ -27,6 +27,7 @@ export const BankModal: React.FC = () => {
   const {
     gameState,
     closeModal,
+    setActiveModal,
     handleSetSavingsRates,
     handleTakeLoan,
     handleRestructureDebt,
@@ -193,6 +194,13 @@ export const BankModal: React.FC = () => {
               <span className="text-[11px] text-gray-500 font-medium">
                 Dispo-Limit: {gameState.bankAccount.overdraftLimit} € (12,5 % Zins)
               </span>
+              <button
+                type="button"
+                onClick={() => setActiveModal('TRANSACTIONS_MODAL')}
+                className="mt-3 w-full px-3 py-2 rounded-xl bg-white border border-gray-300 hover:border-matcha-500 text-xs font-extrabold text-gray-800 transition-all active:scale-95 cursor-pointer"
+              >
+                Kontoauszug anzeigen
+              </button>
             </div>
           </div>
 

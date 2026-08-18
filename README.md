@@ -1,106 +1,87 @@
-# GOAL – KI-gestütztes Lebenssimulationsspiel für Schüler
+# GOAL – Lebenssimulationsspiel für Schüler
 
-Ein interaktives, pädagogisch fundiertes und grafisch ansprechendes Lebenssimulationsspiel für Schüler im Alter von 13–18 Jahren.
+Ein interaktives, pädagogisch fundiertes Lebenssimulationsspiel für Schüler im Alter von 13–18 Jahren.
 
-Im Spiel durchlaufen Schüler ihr Leben im Zeitraffer von **Alter 16 bis 30** (Release 0.1) und treffen fundamentale Lebens- und Finanzentscheidungen zu Beruf, Bildung, monatlichem Budget, Sparen, Notgroschen, Versicherungen, Krediten und persönlichen Lebenszielen.
+Im Spiel durchlaufen Schüler ihr Leben im Zeitraffer von **Alter 16 bis 67** (Unterrichtsszenarien kürzer) und treffen fundamentale Lebens- und Finanzentscheidungen zu Beruf, Bildung, Budget, Sparen, Versicherungen, Krediten, Wohnen, Familie, Steuern und Altersvorsorge.
 
 > **Zentraler pädagogischer Leitsatz:**  
 > *Nicht die Person mit dem höchsten Vermögen gewinnt automatisch, sondern wer seine individuellen Lebensziele ausgewogen erreicht und dabei finanziell handlungsfähig, angemessen abgesichert, gesund und zufrieden bleibt.*
 
 ---
 
-## 🎨 Grafischer Stil
+## Grafischer Stil
 
-Das Spiel ist im **gemütlichen isometrischen Pastell-Anime- / Slice-of-Life-Stil** gestaltet (angelehnt an japanische Lebenssimulatoren wie *Tsuki's Odyssey* & *Japanese Rural Life Adventure*):
-- Warme Cremetöne, sanftes Matchagrün und Sakura-Kirschblüten-Elemente.
-- Interaktive isometrische Stadtkarte mit Zuhause, Campus/Schule, Arbeitsplatz, Sparkasse, Schutzbüro (Versicherungen), Marktplatz und Schrein-Park.
-- Charmante Audio-Synthese über die HTML5 Web Audio API (keine externen Audio-Dateien notwendig).
+Das Spiel ist im **gemütlichen isometrischen Pastell- / Slice-of-Life-Stil** gestaltet:
+- Warme Cremetöne, sanftes Matchagrün und Sakura-Elemente.
+- Interaktive Stadtkarte mit Zuhause, Campus, Arbeitsplatz, Sparkasse, Versicherungen, Markt und Park.
+- Audio über die HTML5 Web Audio API (keine externen Audio-Dateien).
 
 ---
 
-## 🏗️ Architektur & Monorepo-Struktur
-
-Das Projekt ist modular als npm-Workspaces-Monorepo aufgebaut. Der Simulationskern ist **vollkommen unabhängig** von React oder der Benutzeroberfläche und deterministisch über einen Seed testbar.
+## Architektur & Monorepo
 
 ```text
 Lebenssimulator/
 ├── packages/
-│   ├── shared-types/        # Zentrale TypeScript-Typen & Domänenmodelle
-│   ├── simulation-engine/   # Unabhängiger Simulationskern (Monatsschritte, Zinsen, PRNG)
-│   ├── game-content/        # Datengetriebene Inhalte (Ziele, Berufe, Ereignisse, Lernkarten)
-│   └── scoring-engine/      # Mehrdimensionale Lebensabschlussbewertung
+│   ├── shared-types/        # Domänenmodelle
+│   ├── simulation-engine/   # Monatsschritte, Zinsen, PRNG (UI-unabhängig)
+│   ├── game-content/        # Ziele, Berufe, Ereignisse, Lernkarten
+│   └── scoring-engine/      # Abschlussbewertung
 ├── apps/
-│   └── player-web/          # React 19 + TypeScript + Vite + TailwindCSS
-├── docs/                    # Architekturentscheidungen & Dokumentation
-└── package.json             # Root Monorepo
+│   ├── player-web/          # React 19 + Vite + Tailwind
+│   └── api/                 # Node.js API für Klassenmodus (MariaDB)
+├── package.json
+└── README.md
 ```
+
+Die Simulation läuft **im Browser**. Die API speichert nur Identitäten, Räume und Spielstände (MariaDB auf Plesk).
 
 ---
 
-## 🚀 Schnellstart & Installation
+## Schnellstart
 
 ### Voraussetzungen
-- Node.js >= 18.0.0 (empfohlen: Node.js 20+)
-- npm >= 9.0.0
+- Node.js >= 18 (empfohlen: 20+)
+- npm >= 9
 
-### 1. Abhängigkeiten installieren
 ```bash
 npm install
-```
-
-### 2. Entwicklungsserver starten
-```bash
 npm run dev
 ```
-Öffne anschließend [http://localhost:5173](http://localhost:5173) im Browser.
 
-### 3. Automatisierte Tests ausführen
+Öffne [http://localhost:5174](http://localhost:5174).
+
 ```bash
 npm run test
-```
-
-### 4. Produktions-Build erstellen
-```bash
 npm run build
 ```
 
+### API (Klassenmodus, optional)
+
+```bash
+npm run dev:api
+```
+
+Benötigt MariaDB und eine `.env` in `apps/api` (siehe `apps/api/.env.example`).
+
 ---
 
-## 🎮 Enthaltene Spielfunktionen (Release 0.1 / Phase 0 & 1)
+## Spielfunktionen
 
-1. **Charaktererstellung & Startbedingungen**:
-   - 4 Anime-Avatare (Leo, Mia, Sam, Kim)
-   - 4 Startbedingungen (Familienunterstützung, Selbstständiger Start, Großstadt, Land) mit unterschiedlichem Startkapital und Taschengeld.
+1. **Charakter & Startbedingungen** – Avatare und familiäre/regionale Startlagen.
+2. **Lebensziele** – 11 Ziele; Schüler wählen und priorisieren 3–5.
+3. **Bildung & Karriere** – Ausbildung, Studium, Quereinstieg.
+4. **Monatssimulation** – 16–67 (oder Szenario-`endAge`), Play/Pause, 1x/2x/5x.
+5. **Ereignisse** mit Lernhinweisen; Kontoauszug in der Sparkasse.
+6. **Versicherungen, Wohnen, Familie, Steuern, Rente (bAV).**
+7. **Speichern** – `localStorage` + JSON-Export; optional Cloud-Save über die API.
+8. **Abschlussbewertung** – Note A+–F, Gewichte: Ziele 30 %, Stabilität 25 %, Schutz 15 %, Gesundheit / Zufriedenheit / Wissen je 10 %.
 
-2. **Lebensziel-Auswahl & Priorisierung**:
-   - 8 ausbalancierte Ziele (Ausbildung, Studium, Notgroschen, Schuldenfreiheit, Eigene Wohnung, Erstes Auto, Reisen, 10.000 € Vermögen).
-   - Schüler wählen 3 bis 5 Ziele und priorisieren diese (Prio 1 bis 5).
+---
 
-3. **Bildungs- und Karrierewahl**:
-   - Duale Berufsausbildung (3 Jahre, Ausbildungsvergütung, anschl. Gehaltssprung).
-   - Bachelor-Studium (3,5 Jahre, BAföG/Werkstudent, anschl. höheres Einstiegsgehalt).
-   - Direkter Berufseinstieg / Quereinstieg.
+## Plesk / Produktion
 
-4. **Monatliche Finanzsimulation**:
-   - 12 Monate pro Jahr, Alter 16 bis 30.
-   - Steuerung: Play, Pause, Geschwindigkeiten (1x, 2x, 5x), Einzelschritte (+1 Monat, +1 Jahr).
-   - 50-30-20 Monatsbudget (Einnahmen, Fixkosten, Freizeit, Sparen, Netto-Cashflow).
-   - Dispositionskredit (11,5 % p. a.) & Notgroschen-Tagesgeld (2,5 % p. a.).
-
-5. **Interaktive Lebensereignisse & Dilemmata**:
-   - 10+ geschriebene Ereignisse mit echten Wahlmöglichkeiten (Displaybruch, Ferienjob, Fahrradunfall, Autokauf, Zahnbehandlung, Weiterbildung, Hype-Spekulation).
-   - Jede Wahl enthält einen **didaktischen Merksatz (Lernhinweis)** für Schüler.
-
-6. **Vertragsordner & Versicherungen**:
-   - Privathaftpflicht, Berufsunfähigkeit, Zahnzusatz, Hausrat, KFZ.
-   - Live-Kosten- und Leistungsvergleich mit Erklärung existenzbedrohender Risiken.
-
-7. **Speichern & Laden**:
-   - Automatisches Speichern im Browser (`localStorage`).
-   - JSON-Export und -Import für Unterrichtszwecke.
-
-8. **Abschlussbewertung mit 30 Jahren**:
-   - Mehrdimensionale Note (A+ bis F) und Score (0–100).
-   - 6 Bewertungsdimensionen (Ziele 30 %, Stabilität 20 %, Schutz 15 %, Gesundheit 15 %, Zufriedenheit 10 %, Wissen 10 %).
-   - „Was wäre, wenn...?“ – Alternative Zeitlinienvergleiche.
-   - Didaktische Handlungsempfehlungen.
+1. Frontend: `npm run build` → Document Root auf `apps/player-web/dist`.
+2. MariaDB-Datenbank in Plesk anlegen.
+3. API als Node-App (`apps/api`), Startdatei `app.js`, Env mit `DATABASE_URL` / MariaDB-Zugangsdaten.
+4. CORS auf die Spiel-Domain beschränken.

@@ -281,19 +281,89 @@ export function stepSimulationMonth(
   };
   updatedBudget.monthlyCashflow = calculateCashflow(updatedBudget);
 
-  // 17. Monatliche Transaktion
-  const monthTx: TransactionRecord = {
-    id: `tx_mo_${currentState.currentAge}_${currentState.currentMonth}_${rng.nextInt(100, 999)}`,
-    age: currentState.currentAge,
-    year: currentState.currentYear,
-    month: currentState.currentMonth,
-    amount: Math.round((monthlyIncome - monthlyExpenses) * 100) / 100,
-    category: isRetired ? 'Rentenauszahlung' : 'Monatsabschluss',
-    description: isRetired
-      ? `Gesetzliche + bAV + ETF-Rente (+${monthlyIncome} €)`
-      : `Gehalt Netto (+${effectiveNetSalary} €), Fixe & var. Ausgaben (-${monthlyExpenses} €)`,
-    isAutomatic: true,
+  // 17. Monatliche Buchungen (für Kontoauszug getrennt)
+  const age = currentState.currentAge;
+  const year = currentState.currentYear;
+  const month = currentState.currentMonth;
+  const monthTxs: TransactionRecord[] = [];
+  const pushTx = (
+    amount: number,
+    category: string,
+    description: string,
+    suffix: string
+  ) => {
+    if (Math.abs(amount) < 0.005) return;
+    monthTxs.push({
+      id: `tx_mo_${age}_${month}_${suffix}_${rng.nextInt(100, 999)}`,
+      age,
+      year,
+      month,
+      amount: Math.round(amount * 100) / 100,
+      category,
+      description,
+      isAutomatic: true,
+    });
   };
+
+  if (isRetired) {
+    pushTx(pensionPayout, 'Rente', `Rentenauszahlung (+${Math.round(pensionPayout)} €)`, 'rent');
+  } else {
+    pushTx(effectiveNetSalary, 'Gehalt', `Gehalt Netto (+${Math.round(effectiveNetSalary)} €)`, 'salary');
+  }
+  pushTx(partnerContribution, 'Partner', `Partnerbeitrag (+${Math.round(partnerContribution)} €)`, 'partner');
+  pushTx(
+    currentState.budget.familySupport,
+    'Familie',
+    `Familienunterstützung (+${Math.round(currentState.budget.familySupport)} €)`,
+    'family'
+  );
+  pushTx(childBenefitTotal, 'Kindergeld', `Kindergeld (+${Math.round(childBenefitTotal)} €)`, 'child');
+  pushTx(
+    -currentState.budget.rentAndHousing,
+    'Wohnen',
+    `Miete / Wohnkosten (-${Math.round(currentState.budget.rentAndHousing)} €)`,
+    'rent'
+  );
+  pushTx(
+    -currentState.budget.insurancesTotal,
+    'Versicherung',
+    `Versicherungsbeiträge (-${Math.round(currentState.budget.insurancesTotal)} €)`,
+    'ins'
+  );
+  pushTx(
+    -updatedLoanRatesTotal,
+    'Kredit',
+    `Kreditraten (-${Math.round(updatedLoanRatesTotal)} €)`,
+    'loan'
+  );
+  if (newGiro < 0 || currentState.bankAccount.giroBalance + monthlyIncome - monthlyExpenses < 0) {
+    const giroBeforeFee =
+      currentState.bankAccount.giroBalance + monthlyIncome - monthlyExpenses;
+    // Approximate: fee was applied when post-cashflow giro was negative
+    const feeBase = Math.min(0, giroBeforeFee);
+    if (feeBase < 0) {
+      const fee = calculateOverdraftFeeMonthly(
+        feeBase,
+        currentState.bankAccount.overdraftInterestAnnual
+      );
+      pushTx(-fee, 'Dispozinsen', `Dispozinsen (-${Math.round(fee * 100) / 100} €)`, 'dispo');
+    }
+  }
+  pushTx(
+    -(
+      currentState.budget.foodAndGroceries +
+      currentState.budget.mobilityPublicTransitOrCar +
+      currentState.budget.phoneInternetSubscriptions +
+      childExpenses +
+      currentState.budget.totalVariableExpenses +
+      currentState.budget.utilitiesAndEnergy +
+      bausparRatesTotal +
+      bavMonthly
+    ),
+    'Ausgaben',
+    'Sonstige Fix- und variable Kosten',
+    'other'
+  );
 
   // 18. Datum & Ruhestand (Lebenslauf bis Alter 67 = 51 Jahre)
   let nextMonth = currentState.currentMonth + 1;
@@ -307,7 +377,8 @@ export function stepSimulationMonth(
     nextYear += 1;
   }
 
-  if (nextAge >= 67 && nextMonth === 1) {
+  const endAge = currentState.scenarioEndAge ?? 67;
+  if (nextAge >= endAge && nextMonth === 1) {
     isGameOver = true;
   }
 
@@ -349,7 +420,7 @@ export function stepSimulationMonth(
         : Math.max(5, 45 - updatedCareer.timeCommitmentHoursWeekly - updatedFamily.childrenCount * 3),
       knowledgePoints: Math.min(100, currentState.metrics.knowledgePoints + 1),
     },
-    transactions: [monthTx, ...currentState.transactions].slice(0, 100),
+    transactions: [...monthTxs, ...currentState.transactions].slice(0, 100),
   };
 
   // 19. Ziele prüfen
