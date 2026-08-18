@@ -33,3 +33,7 @@ Not executed in-browser during this task. Expected acceptance path:
 
 - Manual two-student browser acceptance remains to be performed.
 - The production build keeps the existing Vite chunk-size warning; build still exits successfully.
+
+## Review Fix (2026-08-18)
+
+- Moved `apiError` banner and `Aktualisiert` timestamp above tab panels in `ClassroomModal.tsx` so poll/API failures are visible on both CLASS and CERTIFICATE tabs.

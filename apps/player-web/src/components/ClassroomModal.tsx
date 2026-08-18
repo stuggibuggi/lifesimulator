@@ -191,18 +191,24 @@ export const ClassroomModal: React.FC = () => {
           </button>
         </div>
 
+        {apiError && (
+          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-bold">
+            {apiError}
+          </div>
+        )}
+
+        {lastUpdatedAt && (
+          <p className="text-[10px] text-indigo-700 font-bold">
+            Aktualisiert {lastUpdatedAt.toLocaleTimeString('de-DE')}
+          </p>
+        )}
+
         {activeTab === 'CLASS' && (
           <div className="space-y-6">
             {!getTeacherToken() && !studentSession && (
               <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-200 text-xs text-amber-950">
                 <strong className="font-black">Hinweis:</strong> Melde dich als Lehrer an oder tritt
                 einer Klasse bei, um echte MariaDB-Daten zu sehen.
-              </div>
-            )}
-
-            {apiError && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-bold">
-                {apiError}
               </div>
             )}
 
@@ -237,11 +243,6 @@ export const ClassroomModal: React.FC = () => {
                 <p className="text-xs text-gray-600 mt-1">
                   {loading ? 'Lade Klassendaten…' : 'Schüler verbinden sich mit diesem Code.'}
                 </p>
-                {lastUpdatedAt && (
-                  <p className="text-[10px] text-indigo-700 font-bold mt-1">
-                    Aktualisiert {lastUpdatedAt.toLocaleTimeString('de-DE')}
-                  </p>
-                )}
               </div>
               <div className="bg-white p-3 rounded-2xl border border-indigo-200 flex items-center gap-2 shadow-2xs">
                 <QrCode className="w-8 h-8 text-indigo-700" />
