@@ -62,13 +62,17 @@ router.post('/teacher/register', async (req, res) => {
         : 'Konto angelegt, aber die Bestätigungsmail konnte nicht gesendet werden. Bitte später „Passwort vergessen“ nutzen oder den Admin kontaktieren.',
     });
   } catch (err) {
-    console.error(err);
+    console.error('[auth/register]', err);
     if (err && (err.code === 'ER_BAD_FIELD_ERROR' || err.errno === 1054)) {
       return res.status(500).json({
         error: 'Datenbankschema veraltet. Bitte in apps/api: npm run migrate',
+        detail: String(err.message || err),
       });
     }
-    res.status(500).json({ error: 'Registrierung fehlgeschlagen.' });
+    res.status(500).json({
+      error: 'Registrierung fehlgeschlagen.',
+      detail: String(err && err.message ? err.message : err),
+    });
   }
 });
 
