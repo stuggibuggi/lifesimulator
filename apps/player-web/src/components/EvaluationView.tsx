@@ -16,6 +16,7 @@ import {
   Download,
   Lightbulb,
 } from 'lucide-react';
+import { formatEvaluationTitle, formatSaveFilename } from './EvaluationView.helpers';
 
 export const EvaluationView: React.FC = () => {
   const { gameState, resetGame, exportSaveState } = useGameStore();
@@ -23,6 +24,7 @@ export const EvaluationView: React.FC = () => {
   if (!gameState) return null;
 
   const evaluation = evaluateLifeRun(gameState);
+  const evaluationEndAge = gameState.scenarioEndAge ?? gameState.currentAge ?? 67;
 
   const handleDownload = () => {
     sound.playPop();
@@ -31,7 +33,7 @@ export const EvaluationView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `GOAL_Lebenslauf_${gameState.character.name}_Alter30.json`;
+    a.download = formatSaveFilename(gameState.character.name, evaluationEndAge);
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -42,7 +44,7 @@ export const EvaluationView: React.FC = () => {
       <div className="bg-gradient-to-br from-white via-cozy-cream to-sakura-50 rounded-4xl p-8 md:p-12 shadow-cozy border-4 border-[#f0e7d5] text-center relative overflow-hidden mb-8">
         <div className="inline-flex items-center gap-2 bg-matcha-100 text-matcha-800 px-4 py-1.5 rounded-full font-extrabold text-sm mb-4 border border-matcha-200">
           <Sparkles className="w-4 h-4 text-matcha-600" />
-          Abschlussbilanz mit 30 Jahren
+          {formatEvaluationTitle(evaluationEndAge)}
         </div>
 
         {/* Big Grade Badge */}
