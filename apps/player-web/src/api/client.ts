@@ -1,14 +1,27 @@
-const DEFAULT_API =
-  (typeof import.meta !== 'undefined' &&
-    (import.meta as ImportMeta & { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL) ||
-  'http://localhost:3001';
+function resolveApiBase(): string {
+  const fromEnv =
+    typeof import.meta !== 'undefined'
+      ? (import.meta as ImportMeta & { env?: { VITE_API_URL?: string } }).env?.VITE_API_URL
+      : undefined;
+
+  if (fromEnv && String(fromEnv).trim()) {
+    return String(fromEnv).replace(/\/$/, '');
+  }
+
+  // Plesk: Document Root + /api proxy on same host → relative URLs
+  if (typeof window !== 'undefined') {
+    return '';
+  }
+
+  return 'http://localhost:3001';
+}
 
 const TEACHER_TOKEN_KEY = 'GOAL_TEACHER_TOKEN';
 const STUDENT_SESSION_KEY = 'GOAL_STUDENT_SESSION';
 const ACTIVE_CLASSROOM_KEY = 'GOAL_ACTIVE_CLASSROOM_ID';
 
 export function getApiBase(): string {
-  return (DEFAULT_API as string).replace(/\/$/, '');
+  return resolveApiBase();
 }
 
 export function getTeacherToken(): string | null {
