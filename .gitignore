@@ -13,6 +13,10 @@ build/
 .env.local
 .env.*.local
 
+# Local secrets / credentials dumps
+DB user*.txt
+*credentials*.txt
+
 # Logs
 npm-debug.log*
 yarn-debug.log*

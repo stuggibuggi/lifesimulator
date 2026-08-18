@@ -1,11 +1,16 @@
 import { pool } from './pool.js';
 
-const SCHEMA = `
+const CREATE_STATEMENTS = `
 CREATE TABLE IF NOT EXISTS teachers (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   display_name VARCHAR(120) NULL,
+  email_verified_at DATETIME NULL,
+  verification_token_hash VARCHAR(64) NULL,
+  verification_expires_at DATETIME NULL,
+  reset_token_hash VARCHAR(64) NULL,
+  reset_expires_at DATETIME NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -54,13 +59,37 @@ CREATE TABLE IF NOT EXISTS evaluations (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 `;
 
+/** Safe ALTERs for existing Plesk DBs created before email-auth columns. */
+const ALTERS = [
+  'ALTER TABLE teachers ADD COLUMN email_verified_at DATETIME NULL',
+  'ALTER TABLE teachers ADD COLUMN verification_token_hash VARCHAR(64) NULL',
+  'ALTER TABLE teachers ADD COLUMN verification_expires_at DATETIME NULL',
+  'ALTER TABLE teachers ADD COLUMN reset_token_hash VARCHAR(64) NULL',
+  'ALTER TABLE teachers ADD COLUMN reset_expires_at DATETIME NULL',
+];
+
 async function migrate() {
   const conn = await pool.getConnection();
   try {
-    for (const statement of SCHEMA.split(';').map((s) => s.trim()).filter(Boolean)) {
+    for (const statement of CREATE_STATEMENTS.split(';')
+      .map((s) => s.trim())
+      .filter(Boolean)) {
       await conn.query(statement);
     }
-    console.log('MariaDB schema ready.');
+
+    for (const alter of ALTERS) {
+      try {
+        await conn.query(alter);
+      } catch (err) {
+        // Duplicate column = already migrated
+        if (err && (err.errno === 1060 || err.code === 'ER_DUP_FIELDNAME')) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    console.log('MariaDB schema ready (incl. teacher email-auth columns).');
   } finally {
     conn.release();
     await pool.end();

@@ -1,18 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { evaluateLifeRun } from '@goal/scoring-engine';
 import { ModalShell } from './ModalShell';
 import { QrCode, Printer } from 'lucide-react';
 import {
   fetchClassroomSummary,
+  getActiveClassroomId,
   getStudentSession,
   getTeacherToken,
   listMyClassrooms,
+  setActiveClassroomId,
 } from '../api/client';
+
+type ClassroomListItem = {
+  id: number;
+  roomCode: string;
+  title: string;
+  memberCount?: number;
+};
 
 export const ClassroomModal: React.FC = () => {
   const { gameState, closeModal } = useGameStore();
   const [activeTab, setActiveTab] = useState<'CLASS' | 'CERTIFICATE'>('CLASS');
+  const [classrooms, setClassrooms] = useState<ClassroomListItem[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(getActiveClassroomId());
   const [roomCode, setRoomCode] = useState('—');
   const [summary, setSummary] = useState<{
     memberCount: number;
@@ -36,6 +47,23 @@ export const ClassroomModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const studentSession = getStudentSession();
 
+  const loadSummary = useCallback(async (classroomId: number) => {
+    setLoading(true);
+    setApiError(null);
+    try {
+      const data = await fetchClassroomSummary(classroomId);
+      setSummary(data.summary);
+      setMembers(data.members || []);
+      setRoomCode(data.classroom.roomCode);
+      setActiveClassroomId(classroomId);
+      setSelectedId(classroomId);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'API nicht erreichbar');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (studentSession?.roomCode) {
       setRoomCode(studentSession.roomCode);
@@ -50,17 +78,18 @@ export const ClassroomModal: React.FC = () => {
       setApiError(null);
       try {
         const list = await listMyClassrooms();
-        const first = list.classrooms?.[0];
-        if (!first) {
-          if (!cancelled) setSummary(null);
+        if (cancelled) return;
+        const rooms: ClassroomListItem[] = list.classrooms || [];
+        setClassrooms(rooms);
+        if (!rooms.length) {
+          setSummary(null);
+          setMembers([]);
           return;
         }
-        if (!cancelled) setRoomCode(first.roomCode);
-        const data = await fetchClassroomSummary(first.id);
-        if (cancelled) return;
-        setSummary(data.summary);
-        setMembers(data.members || []);
-        setRoomCode(data.classroom.roomCode);
+
+        const preferred =
+          rooms.find((r) => r.id === getActiveClassroomId()) || rooms[0];
+        await loadSummary(preferred.id);
       } catch (err) {
         if (!cancelled) {
           setApiError(err instanceof Error ? err.message : 'API nicht erreichbar');
@@ -73,7 +102,7 @@ export const ClassroomModal: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [studentSession?.roomCode]);
+  }, [studentSession?.roomCode, loadSummary]);
 
   if (!gameState) return null;
 
@@ -82,6 +111,10 @@ export const ClassroomModal: React.FC = () => {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleSelectClassroom = (id: number) => {
+    void loadSummary(id);
   };
 
   return (
@@ -132,6 +165,26 @@ export const ClassroomModal: React.FC = () => {
               <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700 font-bold">
                 {apiError}
               </div>
+            )}
+
+            {classrooms.length > 0 && (
+              <label className="block text-xs">
+                <span className="text-[10px] font-black uppercase text-gray-500">
+                  Aktiver Klassenraum
+                </span>
+                <select
+                  value={selectedId ?? ''}
+                  onChange={(e) => handleSelectClassroom(Number(e.target.value))}
+                  className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-gray-200 font-extrabold bg-white"
+                >
+                  {classrooms.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title} ({c.roomCode})
+                      {c.memberCount != null ? ` · ${c.memberCount} Schüler` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
             )}
 
             <div className="p-5 rounded-3xl bg-indigo-50/80 border-2 border-indigo-200 flex flex-col sm:flex-row items-center justify-between gap-4">

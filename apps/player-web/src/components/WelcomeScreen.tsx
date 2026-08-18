@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { sound } from '../audio/soundSynth';
 import { Sparkles, Play, FolderOpen, Target, ShieldCheck, HeartHandshake, Award } from 'lucide-react';
@@ -6,6 +6,17 @@ import { Sparkles, Play, FolderOpen, Target, ShieldCheck, HeartHandshake, Award 
 export const WelcomeScreen: React.FC = () => {
   const { startNewGame, loadFromLocalStorage, importSaveState, setActiveModal } = useGameStore();
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('verifyTeacher') || params.get('resetTeacher')) {
+        setActiveModal('TEACHER_AUTH_MODAL');
+      }
+    } catch {
+      // ignore
+    }
+  }, [setActiveModal]);
 
   const handleLoad = () => {
     const success = loadFromLocalStorage();

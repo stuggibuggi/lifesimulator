@@ -81,7 +81,9 @@ Benötigt MariaDB und eine `.env` in `apps/api` (siehe `apps/api/.env.example`).
 
 ## Plesk / Produktion
 
-1. Frontend: `npm run build` → Document Root auf `apps/player-web/dist`.
-2. MariaDB-Datenbank in Plesk anlegen.
-3. API als Node-App (`apps/api`), Startdatei `app.js`, Env mit `DATABASE_URL` / MariaDB-Zugangsdaten.
-4. CORS auf die Spiel-Domain beschränken.
+Vollständige Checkliste: [`docs/plesk-go-live-checklist.md`](docs/plesk-go-live-checklist.md) und [`apps/api/README.md`](apps/api/README.md).
+
+1. MariaDB in Plesk anlegen → `schema.sql` oder `npm run migrate:api`.
+2. API als Node-App: Root `apps/api`, Startup `app.js`, Env aus `apps/api/.env.example` (`DB_*`, `JWT_SECRET`, `CORS_ORIGIN`, `APP_PUBLIC_URL`, `SMTP_*`).
+3. Frontend mit `VITE_API_URL` bauen → Document Root `apps/player-web/dist`.
+4. Smoke: `GOAL_API_URL=https://… npm run smoke:api` sowie Lehrer-Mail-Verify / Passwort-Reset / Klassenraum im Browser.

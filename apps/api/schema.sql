@@ -1,11 +1,16 @@
 -- GOAL MariaDB schema for Plesk
--- Import via phpMyAdmin or: mysql -u USER -p DB_NAME < schema.sql
+-- Import via phpMyAdmin or: npm run migrate
 
 CREATE TABLE IF NOT EXISTS teachers (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   display_name VARCHAR(120) NULL,
+  email_verified_at DATETIME NULL,
+  verification_token_hash VARCHAR(64) NULL,
+  verification_expires_at DATETIME NULL,
+  reset_token_hash VARCHAR(64) NULL,
+  reset_expires_at DATETIME NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

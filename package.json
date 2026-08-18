@@ -12,6 +12,7 @@
     "dev:api": "npm run dev --workspace=apps/api",
     "start:api": "npm run start --workspace=apps/api",
     "migrate:api": "npm run migrate --workspace=apps/api",
+    "smoke:api": "npm run smoke --workspace=apps/api",
     "build": "npm run build --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest"

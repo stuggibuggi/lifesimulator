@@ -5,6 +5,7 @@ const DEFAULT_API =
 
 const TEACHER_TOKEN_KEY = 'GOAL_TEACHER_TOKEN';
 const STUDENT_SESSION_KEY = 'GOAL_STUDENT_SESSION';
+const ACTIVE_CLASSROOM_KEY = 'GOAL_ACTIVE_CLASSROOM_ID';
 
 export function getApiBase(): string {
   return (DEFAULT_API as string).replace(/\/$/, '');
@@ -22,6 +23,26 @@ export function setTeacherToken(token: string | null) {
   try {
     if (token) localStorage.setItem(TEACHER_TOKEN_KEY, token);
     else localStorage.removeItem(TEACHER_TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function getActiveClassroomId(): number | null {
+  try {
+    const raw = localStorage.getItem(ACTIVE_CLASSROOM_KEY);
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setActiveClassroomId(id: number | null) {
+  try {
+    if (id == null) localStorage.removeItem(ACTIVE_CLASSROOM_KEY);
+    else localStorage.setItem(ACTIVE_CLASSROOM_KEY, String(id));
   } catch {
     // ignore
   }
@@ -70,11 +91,18 @@ async function apiFetch(path: string, options: RequestInit = {}) {
 }
 
 export async function teacherRegister(email: string, password: string, displayName?: string) {
-  const data = await apiFetch('/api/auth/teacher/register', {
+  return apiFetch('/api/auth/teacher/register', {
     method: 'POST',
     body: JSON.stringify({ email, password, displayName }),
   });
-  setTeacherToken(data.token);
+}
+
+export async function teacherVerify(token: string) {
+  const data = await apiFetch('/api/auth/teacher/verify', {
+    method: 'POST',
+    body: JSON.stringify({ token }),
+  });
+  if (data.token) setTeacherToken(data.token);
   return data;
 }
 
@@ -87,14 +115,30 @@ export async function teacherLogin(email: string, password: string) {
   return data;
 }
 
+export async function teacherForgotPassword(email: string) {
+  return apiFetch('/api/auth/teacher/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function teacherResetPassword(token: string, password: string) {
+  return apiFetch('/api/auth/teacher/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, password }),
+  });
+}
+
 export async function createClassroom(title: string, scenarioId?: string) {
   const token = getTeacherToken();
   if (!token) throw new Error('Nicht als Lehrer angemeldet.');
-  return apiFetch('/api/classrooms', {
+  const data = await apiFetch('/api/classrooms', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify({ title, scenarioId }),
   });
+  if (data.classroom?.id) setActiveClassroomId(data.classroom.id);
+  return data;
 }
 
 export async function listMyClassrooms() {
