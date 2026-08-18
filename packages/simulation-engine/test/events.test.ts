@@ -157,6 +157,35 @@ describe('Lebensereignisse berücksichtigen Eligibility-Regeln', () => {
     ]);
   });
 
+  it('filtert Ereignisse, wenn die Notfallreserve unter minEmergencyMonths liegt', () => {
+    const state = {
+      ...freshState(),
+      currentAge: 25,
+      savingsAccount: { ...freshState().savingsAccount, tagesgeldBalance: 1000 },
+      budget: {
+        ...freshState().budget,
+        totalFixedExpenses: 1500,
+        totalVariableExpenses: 500,
+      },
+    };
+    const events = [
+      {
+        ...testEvent('EVT_NEEDS_EMERGENCY_FUND'),
+        requires: { minEmergencyMonths: 3 },
+      },
+    ] as LifeEvent[];
+
+    expect(getEligibleEvents(events, state)).toHaveLength(0);
+  });
+
+  it('Haftpflicht-Lehrevents bleiben ohne Versicherung sichtbar', () => {
+    const state = { ...freshState(), currentAge: 25 };
+    const uninsuredEligible = getEligibleEvents(ALL_LIFE_EVENTS, state).map((event) => event.id);
+
+    expect(uninsuredEligible).toContain('EVT_WATER_DAMAGE_NEIGHBOR');
+    expect(uninsuredEligible).toContain('EVT_ACCIDENT_BIKE');
+  });
+
   it('filtert Ereignisse, wenn Ausschlussregeln auf den aktuellen Zustand zutreffen', () => {
     const state = {
       ...freshState(),

@@ -23,7 +23,11 @@ Implemented richer event eligibility for `LifeEvent` via optional `requires` and
 - Partner-gated: marriage, first child
 - Home-owner gated: roof repair
 - Home-owner excluded: Eigenbedarf eviction
-- Haftpflicht-gated: water damage, bike accident
+- Haftpflicht teaching (uninsured-visible): water damage, bike accident — choice-level `requiresInsurance` only
+
+## Review Fix (Phase 4)
+
+Removed event-level `requires.hasHaftpflicht` from `EVT_WATER_DAMAGE_NEIGHBOR` and `EVT_ACCIDENT_BIKE` so uninsured players still encounter the teaching scenarios. Choice-level `requiresInsurance: 'HAFTPFLICHT'` on the insurance path is unchanged. Added tests for `minEmergencyMonths` rejection and uninsured eligibility of the two Haftpflicht teaching events.
 
 ## Concerns
 

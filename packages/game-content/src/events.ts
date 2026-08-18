@@ -264,7 +264,6 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 40,
     probability: 0.08,
     icon: 'Droplet',
-    requires: { hasHaftpflicht: true },
     choices: [
       {
         id: 'c_water_haftpflicht',
@@ -375,7 +374,6 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 40,
     probability: 0.08,
     icon: 'AlertTriangle',
-    requires: { hasHaftpflicht: true },
     choices: [
       {
         id: 'c_bike_haftpflicht',
