@@ -99,6 +99,7 @@ describe('POST /api/classrooms/join', () => {
     expect(response.status).toBe(201);
     expect(response.data.sessionToken).toBe('session-first');
     expect(response.data.membershipId).toBe(77);
+    expect(response.data.classroom.scenarioId).toBe('scenario-basic');
     expect(await bcrypt.compare('1234', storedPinHash)).toBe(true);
     expect(storedPinHash).not.toBe('1234');
   });
@@ -213,6 +214,7 @@ describe('POST /api/classrooms/join', () => {
     expect(response.status).toBe(200);
     expect(response.data.sessionToken).toBe('session-first');
     expect(response.data.membershipId).toBe(77);
+    expect(response.data.classroom.scenarioId).toBe('scenario-basic');
     expect(updateParams).toEqual(['session-first', 77]);
   });
 });

@@ -13,6 +13,7 @@ import {
   setActiveClassroomId,
 } from '../api/client';
 import type { ClassroomCertificateResponse } from '../api/client';
+import { getEducationalScenarioTitle } from './ClassroomAuthModal.helpers';
 import {
   canLoadClassroomCertificate,
   formatClassroomMemberAge,
@@ -25,6 +26,7 @@ type ClassroomListItem = {
   id: number;
   roomCode: string;
   title: string;
+  scenarioId?: string | null;
   memberCount?: number;
 };
 
@@ -61,6 +63,11 @@ export const ClassroomModal: React.FC = () => {
       setSummary(data.summary);
       setMembers(data.members || []);
       setRoomCode(data.classroom.roomCode);
+      setClassrooms((rooms) =>
+        rooms.map((room) =>
+          room.id === classroomId ? { ...room, scenarioId: data.classroom.scenarioId } : room
+        )
+      );
       setActiveClassroomId(classroomId);
       setSelectedId(classroomId);
       setLastUpdatedAt(new Date());
@@ -127,6 +134,10 @@ export const ClassroomModal: React.FC = () => {
   const { certificate } = evaluation;
   const certificateToShow = loadedCertificate?.certificate ?? certificate;
   const canPrintCertificate = Boolean(loadedCertificate?.certificate) || gameState.isGameOver;
+  const selectedClassroom = classrooms.find((classroom) => classroom.id === selectedId);
+  const scenarioName = getEducationalScenarioTitle(
+    selectedClassroom?.scenarioId ?? studentSession?.scenarioId
+  );
 
   const handlePrint = () => {
     window.print();
@@ -240,6 +251,11 @@ export const ClassroomModal: React.FC = () => {
                 <div className="text-2xl font-black text-indigo-950 tracking-widest mt-0.5">
                   {roomCode}
                 </div>
+                {scenarioName && (
+                  <div className="text-xs font-extrabold text-indigo-800 mt-1">
+                    Szenario: {scenarioName}
+                  </div>
+                )}
                 <p className="text-xs text-gray-600 mt-1">
                   {loading ? 'Lade Klassendaten…' : 'Schüler verbinden sich mit diesem Code.'}
                 </p>

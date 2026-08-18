@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { EDUCATIONAL_SCENARIOS } from '@goal/game-content';
 import { ModalShell } from './ModalShell';
 import {
   createClassroom,
@@ -17,6 +18,10 @@ import {
 } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 import { sound } from '../audio/soundSynth';
+import {
+  getEducationalScenarioTitle,
+  resolveClassroomJoinNextStep,
+} from './ClassroomAuthModal.helpers';
 
 type Mode = 'JOIN' | 'TEACHER';
 type TeacherView = 'AUTH' | 'FORGOT' | 'RESET' | 'CHECK_MAIL' | 'LOGGED_IN';
@@ -46,7 +51,7 @@ function clearAuthQueryParams() {
 }
 
 export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, onClose }) => {
-  const { importSaveState, setActiveModal } = useGameStore();
+  const { importSaveState, setActiveModal, startScenarioGame } = useGameStore();
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,7 +65,9 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
   const [displayName, setDisplayName] = useState('');
   const [isRegister, setIsRegister] = useState(false);
   const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [createdScenarioName, setCreatedScenarioName] = useState<string | null>(null);
   const [classTitle, setClassTitle] = useState('Klasse 9b');
+  const [selectedScenarioId, setSelectedScenarioId] = useState(EDUCATIONAL_SCENARIOS[0]?.id ?? '');
   const [teacherReady, setTeacherReady] = useState(Boolean(getTeacherToken()));
   const [teacherView, setTeacherView] = useState<TeacherView>(
     getTeacherToken() ? 'LOGGED_IN' : 'AUTH'
@@ -110,6 +117,10 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
       setStudentSession(session);
 
       const cloud = await loadCloudRun();
+      const nextStep = resolveClassroomJoinNextStep({
+        hasCloudGameState: Boolean(cloud?.run?.gameState),
+        scenarioId: session.scenarioId,
+      });
       if (cloud?.run?.gameState) {
         const ok = importSaveState(JSON.stringify(cloud.run.gameState));
         if (!ok) throw new Error('Cloud-Spielstand ungültig.');
@@ -117,7 +128,11 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
         return;
       }
 
-      setActiveModal('SCENARIO_SELECTION_MODAL');
+      if (nextStep.type === 'START_SCENARIO') {
+        startScenarioGame(nextStep.scenario);
+      } else {
+        setActiveModal('SCENARIO_SELECTION_MODAL');
+      }
       onClose();
     } catch (err) {
       const needsPin = Boolean(err && typeof err === 'object' && 'needsPin' in err);
@@ -197,8 +212,9 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
     setBusy(true);
     setError(null);
     try {
-      const data = await createClassroom(classTitle);
+      const data = await createClassroom(classTitle, selectedScenarioId || undefined);
       setCreatedCode(data.classroom.roomCode);
+      setCreatedScenarioName(getEducationalScenarioTitle(data.classroom.scenarioId));
       if (data.classroom?.id) setActiveClassroomId(data.classroom.id);
       sound.playFanfare();
     } catch (err) {
@@ -211,6 +227,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
   const handleLogout = () => {
     setTeacherToken(null);
     setCreatedCode(null);
+    setCreatedScenarioName(null);
     setTeacherReady(false);
     setTeacherView('AUTH');
   };
@@ -474,6 +491,26 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
               className="w-full px-3 py-2 rounded-xl border-2 border-gray-200"
               placeholder="Klassentitel"
             />
+            <label className="block">
+              <span className="text-[10px] font-black uppercase text-gray-500">
+                Festes Unterrichtsszenario
+              </span>
+              <select
+                value={selectedScenarioId}
+                onChange={(e) => setSelectedScenarioId(e.target.value)}
+                className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-gray-200 font-extrabold bg-white"
+              >
+                {EDUCATIONAL_SCENARIOS.map((scenario) => (
+                  <option key={scenario.id} value={scenario.id}>
+                    {scenario.title}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-[11px] font-semibold text-gray-500">
+                Schüler starten automatisch mit diesem Szenario, solange kein Cloud-Spielstand
+                existiert.
+              </span>
+            </label>
             <button
               type="button"
               onClick={handleCreateRoom}
@@ -488,6 +525,11 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
                 <div className="text-3xl font-black tracking-widest text-indigo-950">
                   {createdCode}
                 </div>
+                {createdScenarioName && (
+                  <div className="mt-1 text-xs font-extrabold text-indigo-800">
+                    Szenario: {createdScenarioName}
+                  </div>
+                )}
               </div>
             )}
             <button

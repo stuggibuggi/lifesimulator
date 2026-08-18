@@ -86,6 +86,7 @@ export type ClassroomSummaryResponse = {
     id: number;
     roomCode: string;
     title: string;
+    scenarioId?: string | null;
   };
   summary: {
     memberCount: number;

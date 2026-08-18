@@ -237,7 +237,7 @@ router.get('/:id/summary', requireTeacher, async (req, res) => {
   try {
     const classroomId = Number(req.params.id);
     const rooms = await query(
-      'SELECT id, room_code, title FROM classrooms WHERE id = ? AND teacher_id = ? LIMIT 1',
+      'SELECT id, room_code, title, scenario_id FROM classrooms WHERE id = ? AND teacher_id = ? LIMIT 1',
       [classroomId, req.teacher.teacherId]
     );
     if (!rooms.length) return res.status(404).json({ error: 'Klasse nicht gefunden.' });
@@ -300,6 +300,7 @@ router.get('/:id/summary', requireTeacher, async (req, res) => {
         id: rooms[0].id,
         roomCode: rooms[0].room_code,
         title: rooms[0].title,
+        scenarioId: rooms[0].scenario_id,
       },
       summary: {
         memberCount: members.length,
