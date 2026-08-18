@@ -105,6 +105,32 @@ router.get('/mine', requireTeacher, async (req, res) => {
   }
 });
 
+router.delete('/:id', requireTeacher, async (req, res) => {
+  try {
+    const classroomId = Number(req.params.id);
+    if (!Number.isInteger(classroomId) || classroomId <= 0) {
+      return res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    }
+
+    const rooms = await query('SELECT id, teacher_id FROM classrooms WHERE id = ? LIMIT 1', [
+      classroomId,
+    ]);
+    if (!rooms.length) return res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    if (Number(rooms[0].teacher_id) !== Number(req.teacher.teacherId)) {
+      return res.status(403).json({ error: 'Du kannst nur eigene Klassen löschen.' });
+    }
+
+    await query('DELETE FROM classrooms WHERE id = ? AND teacher_id = ?', [
+      classroomId,
+      req.teacher.teacherId,
+    ]);
+    res.status(204).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Klasse konnte nicht gelöscht werden.' });
+  }
+});
+
 router.post('/join', async (req, res) => {
   try {
     const roomCode = String(req.body.roomCode || '')

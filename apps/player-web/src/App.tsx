@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useGameStore } from './store/gameStore';
 import { WelcomeScreen } from './components/WelcomeScreen';
 import { CharacterSetupScreen } from './components/CharacterSetupScreen';
@@ -27,6 +27,16 @@ import { ClassroomAuthModal } from './components/ClassroomAuthModal';
 
 export const App: React.FC = () => {
   const { gamePhase, gameState, activeModal, setActiveModal, closeModal } = useGameStore();
+
+  useEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get('join')) {
+        setActiveModal('JOIN_CLASS_MODAL');
+      }
+    } catch {
+      // ignore malformed URLs in embedded contexts
+    }
+  }, [setActiveModal]);
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] flex flex-col font-sans">

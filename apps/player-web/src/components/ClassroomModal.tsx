@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { evaluateLifeRun } from '@goal/scoring-engine';
 import { ModalShell } from './ModalShell';
-import { QrCode, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import {
+  deleteClassroom,
   fetchCertificate,
   fetchClassroomSummary,
   getActiveClassroomId,
@@ -30,6 +32,10 @@ type ClassroomListItem = {
   memberCount?: number;
 };
 
+function makeClassroomJoinUrl(roomCode: string): string {
+  return `https://vorsorgenavigator.stoffner.de/?join=${encodeURIComponent(roomCode)}`;
+}
+
 export const ClassroomModal: React.FC = () => {
   const { gameState, closeModal } = useGameStore();
   const [activeTab, setActiveTab] = useState<'CLASS' | 'CERTIFICATE'>('CLASS');
@@ -53,6 +59,7 @@ export const ClassroomModal: React.FC = () => {
   const [certificateRunIdLoading, setCertificateRunIdLoading] = useState<number | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deletingClassroomId, setDeletingClassroomId] = useState<number | null>(null);
   const studentSession = getStudentSession();
 
   const loadSummary = useCallback(async (classroomId: number, options?: { silent?: boolean }) => {
@@ -135,6 +142,7 @@ export const ClassroomModal: React.FC = () => {
   const certificateToShow = loadedCertificate?.certificate ?? certificate;
   const canPrintCertificate = Boolean(loadedCertificate?.certificate) || gameState.isGameOver;
   const selectedClassroom = classrooms.find((classroom) => classroom.id === selectedId);
+  const joinUrl = roomCode && roomCode !== '—' ? makeClassroomJoinUrl(roomCode) : null;
   const scenarioName = getEducationalScenarioTitle(
     selectedClassroom?.scenarioId ?? studentSession?.scenarioId
   );
@@ -146,6 +154,40 @@ export const ClassroomModal: React.FC = () => {
   const handleSelectClassroom = (id: number) => {
     setLoadedCertificate(null);
     void loadSummary(id);
+  };
+
+  const handleDeleteClassroom = async () => {
+    if (selectedId == null || !selectedClassroom) return;
+    const ok = window.confirm(
+      `Klasse "${selectedClassroom.title}" wirklich löschen?\n\nAlle Schüler-Zugänge, Spielstände und Zertifikate dieser Klasse werden dauerhaft entfernt.`
+    );
+    if (!ok) return;
+
+    setDeletingClassroomId(selectedId);
+    setApiError(null);
+    try {
+      await deleteClassroom(selectedId);
+      const remainingClassrooms = classrooms.filter((classroom) => classroom.id !== selectedId);
+      const nextClassroom = remainingClassrooms[0] ?? null;
+      setClassrooms(remainingClassrooms);
+      setLoadedCertificate(null);
+
+      if (nextClassroom) {
+        setActiveClassroomId(nextClassroom.id);
+        await loadSummary(nextClassroom.id);
+      } else {
+        setSelectedId(null);
+        setActiveClassroomId(null);
+        setRoomCode('—');
+        setSummary(null);
+        setMembers([]);
+        setLastUpdatedAt(null);
+      }
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Klasse löschen fehlgeschlagen.');
+    } finally {
+      setDeletingClassroomId(null);
+    }
   };
 
   const handleLoadCertificate = async (member: ClassroomMemberRow) => {
@@ -259,12 +301,37 @@ export const ClassroomModal: React.FC = () => {
                 <p className="text-xs text-gray-600 mt-1">
                   {loading ? 'Lade Klassendaten…' : 'Schüler verbinden sich mit diesem Code.'}
                 </p>
+                {joinUrl && (
+                  <a
+                    href={joinUrl}
+                    className="mt-2 block text-[11px] font-bold text-indigo-700 underline break-all"
+                  >
+                    {joinUrl}
+                  </a>
+                )}
               </div>
-              <div className="bg-white p-3 rounded-2xl border border-indigo-200 flex items-center gap-2 shadow-2xs">
-                <QrCode className="w-8 h-8 text-indigo-700" />
+              <div className="bg-white p-3 rounded-2xl border border-indigo-200 flex flex-col items-center gap-2 shadow-2xs">
+                {joinUrl ? (
+                  <QRCodeSVG value={joinUrl} size={96} />
+                ) : (
+                  <div className="w-24 h-24 rounded-xl bg-gray-100" />
+                )}
                 <span className="text-xs font-bold text-gray-700">Raumcode teilen</span>
               </div>
             </div>
+
+            {getTeacherToken() && selectedClassroom && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteClassroom()}
+                  disabled={deletingClassroomId === selectedClassroom.id || loading}
+                  className="px-4 py-2 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-extrabold text-xs transition-all disabled:opacity-50"
+                >
+                  {deletingClassroomId === selectedClassroom.id ? 'Lösche Klasse…' : 'Klasse löschen'}
+                </button>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-center">
               <div className="bg-gray-50 p-4 rounded-2xl border border-gray-200">

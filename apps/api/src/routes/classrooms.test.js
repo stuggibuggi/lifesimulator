@@ -2,6 +2,8 @@ import express from 'express';
 import { createServer } from 'node:http';
 import bcrypt from 'bcryptjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import jwt from 'jsonwebtoken';
+import { signTeacherToken } from '../middleware/auth.js';
 
 vi.mock('../db/pool.js', () => ({
   query: vi.fn(),
@@ -44,6 +46,37 @@ async function postJoin(body) {
       server.close((err) => (err ? reject(err) : resolve()));
     });
   }
+}
+
+async function request(method, path, options = {}) {
+  const app = createApp();
+  const server = createServer(app);
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+
+  try {
+    const res = await fetch(`http://127.0.0.1:${address.port}${path}`, {
+      method,
+      headers: {
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    return { status: res.status, data };
+  } finally {
+    await new Promise((resolve, reject) => {
+      server.close((err) => (err ? reject(err) : resolve()));
+    });
+  }
+}
+
+function teacherAuthHeader(teacherId = 7) {
+  return {
+    Authorization: `Bearer ${signTeacherToken({ id: teacherId, email: `teacher-${teacherId}@example.test` })}`,
+  };
 }
 
 function mockClassroom() {
@@ -216,5 +249,80 @@ describe('POST /api/classrooms/join', () => {
     expect(response.data.membershipId).toBe(77);
     expect(response.data.classroom.scenarioId).toBe('scenario-basic');
     expect(updateParams).toEqual(['session-first', 77]);
+  });
+});
+
+describe('DELETE /api/classrooms/:id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('requires a teacher token', async () => {
+    const response = await request('DELETE', '/api/classrooms/42');
+
+    expect(response.status).toBe(401);
+    expect(response.data.error).toContain('Lehrer-Login');
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-teacher tokens', async () => {
+    const token = jwt.sign({ role: 'student', teacherId: 7 }, 'dev-insecure-secret');
+
+    const response = await request('DELETE', '/api/classrooms/42', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.data.error).toContain('Nur für Lehrer');
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('returns 404 when the classroom does not exist', async () => {
+    query.mockResolvedValueOnce([]);
+
+    const response = await request('DELETE', '/api/classrooms/42', {
+      headers: teacherAuthHeader(7),
+    });
+
+    expect(response.status).toBe(404);
+    expect(response.data.error).toContain('nicht gefunden');
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining('FROM classrooms'),
+      [42]
+    );
+  });
+
+  it('forbids deleting another teacher classroom', async () => {
+    query.mockResolvedValueOnce([{ id: 42, teacher_id: 8 }]);
+
+    const response = await request('DELETE', '/api/classrooms/42', {
+      headers: teacherAuthHeader(7),
+    });
+
+    expect(response.status).toBe(403);
+    expect(response.data.error).toContain('eigene Klassen');
+    expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('deletes an owned classroom', async () => {
+    query
+      .mockResolvedValueOnce([{ id: 42, teacher_id: 7 }])
+      .mockResolvedValueOnce({ affectedRows: 1 });
+
+    const response = await request('DELETE', '/api/classrooms/42', {
+      headers: teacherAuthHeader(7),
+    });
+
+    expect(response.status).toBe(204);
+    expect(response.data).toEqual({});
+    expect(query).toHaveBeenCalledWith('DELETE FROM classrooms WHERE id = ? AND teacher_id = ?', [
+      42,
+      7,
+    ]);
   });
 });

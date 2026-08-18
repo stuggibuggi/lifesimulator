@@ -214,6 +214,16 @@ export async function listMyClassrooms() {
   });
 }
 
+export async function deleteClassroom(classroomId: number) {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+  await apiFetch(`/api/classrooms/${classroomId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (getActiveClassroomId() === classroomId) setActiveClassroomId(null);
+}
+
 export async function fetchClassroomSummary(classroomId: number): Promise<ClassroomSummaryResponse> {
   const token = getTeacherToken();
   if (!token) throw new Error('Nicht als Lehrer angemeldet.');

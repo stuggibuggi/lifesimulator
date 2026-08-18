@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { EDUCATIONAL_SCENARIOS } from '@goal/game-content';
+import { QRCodeSVG } from 'qrcode.react';
 import { ModalShell } from './ModalShell';
 import {
   createClassroom,
@@ -48,6 +49,10 @@ function clearAuthQueryParams() {
   } catch {
     // ignore
   }
+}
+
+function makeClassroomJoinUrl(roomCode: string): string {
+  return `https://vorsorgenavigator.stoffner.de/?join=${encodeURIComponent(roomCode)}`;
 }
 
 export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, onClose }) => {
@@ -105,6 +110,12 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
       setTeacherView('RESET');
       clearAuthQueryParams();
     }
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== 'JOIN') return;
+    const joinCode = readQueryParam('join')?.trim().toUpperCase();
+    if (joinCode) setRoomCode(joinCode);
   }, [mode]);
 
   const handleJoin = async (e: React.FormEvent) => {
@@ -521,15 +532,28 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
             </button>
             {createdCode && (
               <div className="p-4 rounded-2xl bg-indigo-50 border-2 border-indigo-200 text-center">
-                <div className="text-[10px] font-black uppercase text-indigo-700">Raumcode</div>
-                <div className="text-3xl font-black tracking-widest text-indigo-950">
-                  {createdCode}
-                </div>
-                {createdScenarioName && (
-                  <div className="mt-1 text-xs font-extrabold text-indigo-800">
-                    Szenario: {createdScenarioName}
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-center text-left">
+                  <div className="text-center sm:text-left">
+                    <div className="text-[10px] font-black uppercase text-indigo-700">Raumcode</div>
+                    <div className="text-3xl font-black tracking-widest text-indigo-950">
+                      {createdCode}
+                    </div>
+                    {createdScenarioName && (
+                      <div className="mt-1 text-xs font-extrabold text-indigo-800">
+                        Szenario: {createdScenarioName}
+                      </div>
+                    )}
+                    <a
+                      href={makeClassroomJoinUrl(createdCode)}
+                      className="mt-2 block text-[11px] font-bold text-indigo-700 underline break-all"
+                    >
+                      {makeClassroomJoinUrl(createdCode)}
+                    </a>
                   </div>
-                )}
+                  <div className="mx-auto p-2 rounded-xl bg-white border border-indigo-200">
+                    <QRCodeSVG value={makeClassroomJoinUrl(createdCode)} size={112} />
+                  </div>
+                </div>
               </div>
             )}
             <button
