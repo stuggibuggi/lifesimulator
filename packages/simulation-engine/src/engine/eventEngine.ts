@@ -3,9 +3,11 @@ import {
   GameState,
   InsuranceContract,
   LifeEvent,
+  LifeEventEligibilityRules,
   TransactionRecord,
 } from '@goal/shared-types';
 import { SeededRandom } from '../math/random';
+import { calculateEmergencyFundMonths } from '../math/finance';
 
 /**
  * Filtert Ereignisse, die für das aktuelle Alter und den aktuellen Lebenszustand infrage kommen
@@ -27,8 +29,54 @@ export function getEligibleEvents(
       return false;
     }
 
+    if (event.requires && !matchesEventRules(event.requires, state)) {
+      return false;
+    }
+
+    if (event.excludes && matchesEventRules(event.excludes, state)) {
+      return false;
+    }
+
     return true;
   });
+}
+
+function matchesEventRules(
+  rules: LifeEventEligibilityRules | undefined,
+  state: GameState
+): boolean {
+  if (!rules) {
+    return true;
+  }
+
+  const hasHaftpflicht = state.insurances.some(
+    (insurance) => insurance.type === 'HAFTPFLICHT' && insurance.isActive
+  );
+  const hasPartner = state.family.status !== 'SINGLE';
+  const isHomeOwner = state.housing.type === 'PROPERTY_OWNERSHIP';
+  const emergencyMonths = calculateEmergencyFundMonths(
+    state.savingsAccount.tagesgeldBalance,
+    state.budget.totalFixedExpenses,
+    state.budget.totalVariableExpenses
+  );
+
+  if (rules.hasHaftpflicht !== undefined && rules.hasHaftpflicht !== hasHaftpflicht) {
+    return false;
+  }
+
+  if (rules.hasPartner !== undefined && rules.hasPartner !== hasPartner) {
+    return false;
+  }
+
+  if (rules.isHomeOwner !== undefined && rules.isHomeOwner !== isHomeOwner) {
+    return false;
+  }
+
+  if (rules.minEmergencyMonths !== undefined && emergencyMonths < rules.minEmergencyMonths) {
+    return false;
+  }
+
+  return true;
 }
 
 /**

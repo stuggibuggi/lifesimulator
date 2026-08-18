@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { EDUCATIONAL_SCENARIOS } from '@goal/game-content';
+import { QRCodeSVG } from 'qrcode.react';
 import { ModalShell } from './ModalShell';
 import {
   createClassroom,
@@ -17,6 +19,10 @@ import {
 } from '../api/client';
 import { useGameStore } from '../store/gameStore';
 import { sound } from '../audio/soundSynth';
+import {
+  getEducationalScenarioTitle,
+  resolveClassroomJoinNextStep,
+} from './ClassroomAuthModal.helpers';
 
 type Mode = 'JOIN' | 'TEACHER';
 type TeacherView = 'AUTH' | 'FORGOT' | 'RESET' | 'CHECK_MAIL' | 'LOGGED_IN';
@@ -45,21 +51,28 @@ function clearAuthQueryParams() {
   }
 }
 
+function makeClassroomJoinUrl(roomCode: string): string {
+  return `https://vorsorgenavigator.stoffner.de/?join=${encodeURIComponent(roomCode)}`;
+}
+
 export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, onClose }) => {
-  const { importSaveState, setActiveModal } = useGameStore();
+  const { importSaveState, setActiveModal, startScenarioGame } = useGameStore();
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [roomCode, setRoomCode] = useState('');
   const [alias, setAlias] = useState('');
+  const [pin, setPin] = useState('');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [isRegister, setIsRegister] = useState(false);
   const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [createdScenarioName, setCreatedScenarioName] = useState<string | null>(null);
   const [classTitle, setClassTitle] = useState('Klasse 9b');
+  const [selectedScenarioId, setSelectedScenarioId] = useState(EDUCATIONAL_SCENARIOS[0]?.id ?? '');
   const [teacherReady, setTeacherReady] = useState(Boolean(getTeacherToken()));
   const [teacherView, setTeacherView] = useState<TeacherView>(
     getTeacherToken() ? 'LOGGED_IN' : 'AUTH'
@@ -99,16 +112,26 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
     }
   }, [mode]);
 
+  useEffect(() => {
+    if (mode !== 'JOIN') return;
+    const joinCode = readQueryParam('join')?.trim().toUpperCase();
+    if (joinCode) setRoomCode(joinCode);
+  }, [mode]);
+
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const session = await joinClassroom(roomCode, alias);
+      const session = await joinClassroom(roomCode, alias, pin);
       sound.playFanfare();
       setStudentSession(session);
 
       const cloud = await loadCloudRun();
+      const nextStep = resolveClassroomJoinNextStep({
+        hasCloudGameState: Boolean(cloud?.run?.gameState),
+        scenarioId: session.scenarioId,
+      });
       if (cloud?.run?.gameState) {
         const ok = importSaveState(JSON.stringify(cloud.run.gameState));
         if (!ok) throw new Error('Cloud-Spielstand ungültig.');
@@ -116,10 +139,20 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
         return;
       }
 
-      setActiveModal('SCENARIO_SELECTION_MODAL');
+      if (nextStep.type === 'START_SCENARIO') {
+        startScenarioGame(nextStep.scenario);
+      } else {
+        setActiveModal('SCENARIO_SELECTION_MODAL');
+      }
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Beitritt fehlgeschlagen.');
+      const needsPin = Boolean(err && typeof err === 'object' && 'needsPin' in err);
+      const message = err instanceof Error ? err.message : 'Beitritt fehlgeschlagen.';
+      setError(
+        needsPin && !pin.trim()
+          ? 'Diesen Alias gibt es schon. Gib die passende PIN ein, um deinen Spielstand zu laden.'
+          : message
+      );
     } finally {
       setBusy(false);
     }
@@ -190,8 +223,9 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
     setBusy(true);
     setError(null);
     try {
-      const data = await createClassroom(classTitle);
+      const data = await createClassroom(classTitle, selectedScenarioId || undefined);
       setCreatedCode(data.classroom.roomCode);
+      setCreatedScenarioName(getEducationalScenarioTitle(data.classroom.scenarioId));
       if (data.classroom?.id) setActiveClassroomId(data.classroom.id);
       sound.playFanfare();
     } catch (err) {
@@ -204,6 +238,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
   const handleLogout = () => {
     setTeacherToken(null);
     setCreatedCode(null);
+    setCreatedScenarioName(null);
     setTeacherReady(false);
     setTeacherView('AUTH');
   };
@@ -213,7 +248,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
       title={mode === 'JOIN' ? 'Klasse beitreten' : 'Lehrer anmelden'}
       subtitle={
         mode === 'JOIN'
-          ? 'Raumcode + Alias (kein Klarnamen nötig)'
+          ? 'Raumcode + Alias + PIN (kein Klarnamen nötig)'
           : 'E-Mail-Bestätigung, Passwort-Reset & Klassenräume (MariaDB)'
       }
       icon={mode === 'JOIN' ? '🧑‍🎓' : '👩‍🏫'}
@@ -257,6 +292,26 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
                 minLength={2}
                 required
               />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-black uppercase text-gray-500">
+                PIN für diesen Alias
+              </span>
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="\d{4,6}"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-gray-200 tracking-widest"
+                placeholder="4–6 Ziffern, z. B. 1234"
+                minLength={4}
+                maxLength={6}
+                required
+              />
+              <span className="mt-1 block text-[11px] font-semibold text-gray-500">
+                Merke dir die PIN: Damit kannst du denselben Alias auf einem anderen Gerät fortsetzen.
+              </span>
             </label>
             <button
               type="submit"
@@ -447,6 +502,26 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
               className="w-full px-3 py-2 rounded-xl border-2 border-gray-200"
               placeholder="Klassentitel"
             />
+            <label className="block">
+              <span className="text-[10px] font-black uppercase text-gray-500">
+                Festes Unterrichtsszenario
+              </span>
+              <select
+                value={selectedScenarioId}
+                onChange={(e) => setSelectedScenarioId(e.target.value)}
+                className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-gray-200 font-extrabold bg-white"
+              >
+                {EDUCATIONAL_SCENARIOS.map((scenario) => (
+                  <option key={scenario.id} value={scenario.id}>
+                    {scenario.title}
+                  </option>
+                ))}
+              </select>
+              <span className="mt-1 block text-[11px] font-semibold text-gray-500">
+                Schüler starten automatisch mit diesem Szenario, solange kein Cloud-Spielstand
+                existiert.
+              </span>
+            </label>
             <button
               type="button"
               onClick={handleCreateRoom}
@@ -457,9 +532,27 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
             </button>
             {createdCode && (
               <div className="p-4 rounded-2xl bg-indigo-50 border-2 border-indigo-200 text-center">
-                <div className="text-[10px] font-black uppercase text-indigo-700">Raumcode</div>
-                <div className="text-3xl font-black tracking-widest text-indigo-950">
-                  {createdCode}
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-center text-left">
+                  <div className="text-center sm:text-left">
+                    <div className="text-[10px] font-black uppercase text-indigo-700">Raumcode</div>
+                    <div className="text-3xl font-black tracking-widest text-indigo-950">
+                      {createdCode}
+                    </div>
+                    {createdScenarioName && (
+                      <div className="mt-1 text-xs font-extrabold text-indigo-800">
+                        Szenario: {createdScenarioName}
+                      </div>
+                    )}
+                    <a
+                      href={makeClassroomJoinUrl(createdCode)}
+                      className="mt-2 block text-[11px] font-bold text-indigo-700 underline break-all"
+                    >
+                      {makeClassroomJoinUrl(createdCode)}
+                    </a>
+                  </div>
+                  <div className="mx-auto p-2 rounded-xl bg-white border border-indigo-200">
+                    <QRCodeSVG value={makeClassroomJoinUrl(createdCode)} size={112} />
+                  </div>
                 </div>
               </div>
             )}

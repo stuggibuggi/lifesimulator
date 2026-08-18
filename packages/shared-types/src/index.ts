@@ -395,6 +395,13 @@ export interface EventChoice {
   learningTip: string;
 }
 
+export interface LifeEventEligibilityRules {
+  hasHaftpflicht?: boolean;
+  hasPartner?: boolean;
+  isHomeOwner?: boolean;
+  minEmergencyMonths?: number;
+}
+
 export interface LifeEvent {
   id: string;
   title: string;
@@ -405,6 +412,8 @@ export interface LifeEvent {
   probability: number;
   icon: string;
   imagePlaceholderId?: string;
+  requires?: LifeEventEligibilityRules;
+  excludes?: LifeEventEligibilityRules;
   choices: EventChoice[];
 }
 

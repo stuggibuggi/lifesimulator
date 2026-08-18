@@ -1,3 +1,5 @@
+import type { CertificateData } from '@goal/shared-types';
+
 function resolveApiBase(): string {
   const fromEnv =
     typeof import.meta !== 'undefined'
@@ -70,6 +72,42 @@ export type StudentSession = {
   scenarioId?: string | null;
 };
 
+export type ClassroomSummaryMember = {
+  alias: string;
+  runId: number | null;
+  currentAge: number | null;
+  isGameOver: boolean;
+  overallScore: number | null;
+  grade: string | null;
+};
+
+export type ClassroomSummaryResponse = {
+  classroom: {
+    id: number;
+    roomCode: string;
+    title: string;
+    scenarioId?: string | null;
+  };
+  summary: {
+    memberCount: number;
+    finishedCount: number;
+    averageScore: number | null;
+    averageGrade: string | null;
+    haftpflichtSharePercent: number;
+    debtTrapAvoidedPercent: number;
+    topChoices: { label: string; count: number }[];
+  };
+  members: ClassroomSummaryMember[];
+};
+
+export type ClassroomCertificateResponse = {
+  alias: string;
+  overallScore: number | null;
+  grade: string | null;
+  certificate: CertificateData | null;
+  dimensions?: unknown;
+};
+
 export function getStudentSession(): StudentSession | null {
   try {
     const raw = localStorage.getItem(STUDENT_SESSION_KEY);
@@ -88,7 +126,7 @@ export function setStudentSession(session: StudentSession | null) {
   }
 }
 
-async function apiFetch(path: string, options: RequestInit = {}) {
+async function apiFetch<T = any>(path: string, options: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
     res = await fetch(`${getApiBase()}${path}`, {
@@ -105,7 +143,7 @@ async function apiFetch(path: string, options: RequestInit = {}) {
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || `API-Fehler ${res.status}`);
+    throw Object.assign(new Error(data.error || `API-Fehler ${res.status}`), data);
   }
   return data;
 }
@@ -176,7 +214,17 @@ export async function listMyClassrooms() {
   });
 }
 
-export async function fetchClassroomSummary(classroomId: number) {
+export async function deleteClassroom(classroomId: number) {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+  await apiFetch(`/api/classrooms/${classroomId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (getActiveClassroomId() === classroomId) setActiveClassroomId(null);
+}
+
+export async function fetchClassroomSummary(classroomId: number): Promise<ClassroomSummaryResponse> {
   const token = getTeacherToken();
   if (!token) throw new Error('Nicht als Lehrer angemeldet.');
   return apiFetch(`/api/classrooms/${classroomId}/summary`, {
@@ -184,7 +232,10 @@ export async function fetchClassroomSummary(classroomId: number) {
   });
 }
 
-export async function fetchCertificate(classroomId: number, runId: number) {
+export async function fetchCertificate(
+  classroomId: number,
+  runId: number
+): Promise<ClassroomCertificateResponse> {
   const token = getTeacherToken();
   if (!token) throw new Error('Nicht als Lehrer angemeldet.');
   return apiFetch(`/api/classrooms/${classroomId}/certificate/${runId}`, {
@@ -192,10 +243,10 @@ export async function fetchCertificate(classroomId: number, runId: number) {
   });
 }
 
-export async function joinClassroom(roomCode: string, alias: string) {
+export async function joinClassroom(roomCode: string, alias: string, pin: string) {
   const data = await apiFetch('/api/classrooms/join', {
     method: 'POST',
-    body: JSON.stringify({ roomCode, alias }),
+    body: JSON.stringify({ roomCode, alias, pin }),
   });
   const session: StudentSession = {
     sessionToken: data.sessionToken,
