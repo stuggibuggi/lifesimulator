@@ -1,9 +1,11 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { query } from '../db/pool.js';
 import { requireTeacher, requireStudent } from '../middleware/auth.js';
 import { makeRoomCode, makeSessionToken, parseJsonField } from '../util.js';
 
 const router = Router();
+const PIN_PATTERN = /^\d{4,6}$/;
 
 router.post('/', requireTeacher, async (req, res) => {
   try {
@@ -76,6 +78,7 @@ router.post('/join', async (req, res) => {
     const alias = String(req.body.alias || '')
       .trim()
       .slice(0, 80);
+    const pin = String(req.body.pin || '').trim();
 
     if (!roomCode || alias.length < 2) {
       return res.status(400).json({ error: 'Raumcode und Alias (mind. 2 Zeichen) nötig.' });
@@ -93,24 +96,75 @@ router.post('/join', async (req, res) => {
       return res.status(410).json({ error: 'Dieser Klassenraum ist abgelaufen.' });
     }
 
+    const memberships = await query(
+      `SELECT id, pin_hash, session_token
+       FROM memberships
+       WHERE classroom_id = ? AND alias = ?
+       LIMIT 1`,
+      [room.id, alias]
+    );
+
     const sessionToken = makeSessionToken();
-    let membershipId;
-    try {
-      const inserted = await query(
-        'INSERT INTO memberships (classroom_id, alias, session_token) VALUES (?, ?, ?)',
-        [room.id, alias, sessionToken]
-      );
-      membershipId = inserted.insertId;
-    } catch (err) {
-      if (err && err.code === 'ER_DUP_ENTRY') {
-        return res.status(409).json({ error: 'Dieser Alias ist in der Klasse schon vergeben.' });
+    const existingMembership = memberships[0];
+
+    if (existingMembership) {
+      if (!pin) {
+        return res.status(401).json({
+          error: 'Dieser Alias existiert bereits. Bitte gib deine PIN ein.',
+          needsPin: true,
+        });
       }
-      throw err;
+
+      const pinOk =
+        existingMembership.pin_hash && (await bcrypt.compare(pin, existingMembership.pin_hash));
+      if (!pinOk) {
+        return res.status(401).json({
+          error: 'PIN stimmt nicht. Bitte prüfe Alias und PIN.',
+          needsPin: true,
+        });
+      }
+
+      await query('UPDATE memberships SET session_token = ?, last_seen_at = NOW() WHERE id = ?', [
+        sessionToken,
+        existingMembership.id,
+      ]);
+
+      return res.json({
+        sessionToken,
+        membershipId: existingMembership.id,
+        classroom: {
+          id: room.id,
+          roomCode: room.room_code,
+          title: room.title,
+          scenarioId: room.scenario_id,
+        },
+        alias,
+      });
     }
 
-    await query('INSERT INTO game_runs (membership_id, current_age, is_game_over) VALUES (?, 16, 0)', [
-      membershipId,
-    ]);
+    if (!PIN_PATTERN.test(pin)) {
+      return res.status(400).json({ error: 'PIN muss aus 4 bis 6 Ziffern bestehen.' });
+    }
+
+    const pinHash = await bcrypt.hash(pin, 10);
+    const inserted = await query(
+      `INSERT INTO memberships (classroom_id, alias, session_token, pin_hash, last_seen_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [room.id, alias, sessionToken, pinHash]
+    );
+    const membershipId = inserted.insertId;
+
+    try {
+      await query('INSERT INTO game_runs (membership_id, current_age, is_game_over) VALUES (?, 16, 0)', [
+        membershipId,
+      ]);
+    } catch (err) {
+      if (err && err.code === 'ER_DUP_ENTRY') {
+        // Defensive only: membership lookup above should prevent duplicate game runs.
+      } else {
+        throw err;
+      }
+    }
 
     res.status(201).json({
       sessionToken,

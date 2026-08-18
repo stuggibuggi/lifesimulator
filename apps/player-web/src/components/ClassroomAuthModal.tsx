@@ -53,6 +53,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
 
   const [roomCode, setRoomCode] = useState('');
   const [alias, setAlias] = useState('');
+  const [pin, setPin] = useState('');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -104,7 +105,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
     setBusy(true);
     setError(null);
     try {
-      const session = await joinClassroom(roomCode, alias);
+      const session = await joinClassroom(roomCode, alias, pin);
       sound.playFanfare();
       setStudentSession(session);
 
@@ -119,7 +120,13 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
       setActiveModal('SCENARIO_SELECTION_MODAL');
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Beitritt fehlgeschlagen.');
+      const needsPin = Boolean(err && typeof err === 'object' && 'needsPin' in err);
+      const message = err instanceof Error ? err.message : 'Beitritt fehlgeschlagen.';
+      setError(
+        needsPin && !pin.trim()
+          ? 'Diesen Alias gibt es schon. Gib die passende PIN ein, um deinen Spielstand zu laden.'
+          : message
+      );
     } finally {
       setBusy(false);
     }
@@ -213,7 +220,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
       title={mode === 'JOIN' ? 'Klasse beitreten' : 'Lehrer anmelden'}
       subtitle={
         mode === 'JOIN'
-          ? 'Raumcode + Alias (kein Klarnamen nötig)'
+          ? 'Raumcode + Alias + PIN (kein Klarnamen nötig)'
           : 'E-Mail-Bestätigung, Passwort-Reset & Klassenräume (MariaDB)'
       }
       icon={mode === 'JOIN' ? '🧑‍🎓' : '👩‍🏫'}
@@ -257,6 +264,26 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
                 minLength={2}
                 required
               />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-black uppercase text-gray-500">
+                PIN für diesen Alias
+              </span>
+              <input
+                type="password"
+                inputMode="numeric"
+                pattern="\d{4,6}"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-gray-200 tracking-widest"
+                placeholder="4–6 Ziffern, z. B. 1234"
+                minLength={4}
+                maxLength={6}
+                required
+              />
+              <span className="mt-1 block text-[11px] font-semibold text-gray-500">
+                Merke dir die PIN: Damit kannst du denselben Alias auf einem anderen Gerät fortsetzen.
+              </span>
             </label>
             <button
               type="submit"

@@ -105,7 +105,7 @@ async function apiFetch(path: string, options: RequestInit = {}) {
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.error || `API-Fehler ${res.status}`);
+    throw Object.assign(new Error(data.error || `API-Fehler ${res.status}`), data);
   }
   return data;
 }
@@ -192,10 +192,10 @@ export async function fetchCertificate(classroomId: number, runId: number) {
   });
 }
 
-export async function joinClassroom(roomCode: string, alias: string) {
+export async function joinClassroom(roomCode: string, alias: string, pin: string) {
   const data = await apiFetch('/api/classrooms/join', {
     method: 'POST',
-    body: JSON.stringify({ roomCode, alias }),
+    body: JSON.stringify({ roomCode, alias, pin }),
   });
   const session: StudentSession = {
     sessionToken: data.sessionToken,
