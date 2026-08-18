@@ -8,9 +8,17 @@
 3. `.env` aus `.env.example` mit `DB_*`, `JWT_SECRET`, `CORS_ORIGIN`, `APP_PUBLIC_URL`, `SMTP_*`
 
 ## SMTP (Plesk-Mailbox)
-- `SMTP_HOST` / `SMTP_PORT=587` / `SMTP_USER` / `SMTP_PASS` / `MAIL_FROM`
-- `APP_PUBLIC_URL=https://vorsorgenavigator.stoffner.de` (Links in Bestätigungs-/Reset-Mails)
-- Ohne SMTP loggt die API Mails nur auf der Konsole (Dev)
+Bevorzugt auf demselben Host (zuverlässiger als `localhost:587`):
+
+```
+SMTP_TRANSPORT=sendmail
+SENDMAIL_PATH=/usr/sbin/sendmail
+MAIL_FROM=GOAL <info@vorsorgenavigator.stoffner.de>
+APP_PUBLIC_URL=https://vorsorgenavigator.stoffner.de
+```
+
+Test auf dem Server: `npm run mail:test -- deine@email.de`  
+Fallback SMTP: `SMTP_HOST=127.0.0.1`, `SMTP_PORT=25`, `SMTP_IGNORE_TLS=true` plus Mailbox-Login.
 
 ## Node.js in Plesk
 - Application Root: `…/apps/api` (Ordner mit `app.js`)
