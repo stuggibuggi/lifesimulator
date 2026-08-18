@@ -50,6 +50,17 @@ Ein Mieter-Event, das für Eigentümer ausgeschlossen wird:
 }
 ```
 
+## Altersabdeckung 46-67
+
+Midlife- und Vorruhestandsereignisse sollen die Altersspanne nach der frühen Familien- und Karrierephase abdecken. Für die aktuelle Abdeckung gelten diese festen Event-IDs:
+
+- `EVT_MIDLIFE_JOB_CHANGE`: 45-55, Karrierewechsel oder Weiterbildung.
+- `EVT_PARENT_CARE`: 48-60, Pflegeorganisation in der Familie.
+- `EVT_INHERITANCE_MODEST`: 50-65, moderates Erbe und Umgang mit Einmalzahlungen.
+- `EVT_HEALTH_CHECK_50`: 49-55, Gesundheitsvorsorge um den 50. Geburtstag.
+- `EVT_PRE_RETIREMENT_BAV`: 55-64, betriebliche Altersvorsorge und Rentenlücke.
+- `EVT_RETIREMENT_TRANSITION`: 65-67, Ruhestandsübergang mit hoher Trigger-Wahrscheinlichkeit.
+
 ## Richtlinien
 
 - Nutze Regeln nur, wenn die Story des Events sonst unplausibel wäre.

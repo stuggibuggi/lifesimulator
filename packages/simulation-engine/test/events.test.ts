@@ -204,6 +204,31 @@ describe('Lebensereignisse berücksichtigen Eligibility-Regeln', () => {
   });
 });
 
+describe('Lebensereignisse für Midlife und Ruhestandsübergang', () => {
+  function eligibleEventIdsAtAge(age: number): string[] {
+    const state = { ...freshState(), currentAge: age };
+
+    return getEligibleEvents(ALL_LIFE_EVENTS, state).map((event) => event.id);
+  }
+
+  it('enthält die Midlife- und Vorruhestandsereignisse mit 55 Jahren', () => {
+    expect(eligibleEventIdsAtAge(55)).toEqual(
+      expect.arrayContaining([
+        'EVT_MIDLIFE_JOB_CHANGE',
+        'EVT_PARENT_CARE',
+        'EVT_INHERITANCE_MODEST',
+        'EVT_HEALTH_CHECK_50',
+        'EVT_PRE_RETIREMENT_BAV',
+      ])
+    );
+  });
+
+  it('enthält den Ruhestandsübergang mit 66 und 67 Jahren', () => {
+    expect(eligibleEventIdsAtAge(66)).toContain('EVT_RETIREMENT_TRANSITION');
+    expect(eligibleEventIdsAtAge(67)).toContain('EVT_RETIREMENT_TRANSITION');
+  });
+});
+
 describe('GOAL_REISEN', () => {
   it('wird nach dem Urlaubsnotfall und dem Städtetrip erreicht', () => {
     const travelGoal = ALL_LIFE_GOALS.find((goal) => goal.id === 'GOAL_REISEN');
