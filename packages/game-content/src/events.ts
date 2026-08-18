@@ -82,6 +82,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 40,
     probability: 0.15,
     icon: 'Heart',
+    requires: { hasPartner: true },
     choices: [
       {
         id: 'c_marry_three_accounts',
@@ -117,6 +118,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 42,
     probability: 0.16,
     icon: 'Baby',
+    requires: { hasPartner: true },
     choices: [
       {
         id: 'c_baby_smart_used',
@@ -152,6 +154,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 44,
     probability: 0.1,
     icon: 'Home',
+    excludes: { isHomeOwner: true },
     choices: [
       {
         id: 'c_evict_move_smart',
@@ -187,6 +190,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 45,
     probability: 0.1,
     icon: 'Wrench',
+    requires: { isHomeOwner: true },
     choices: [
       {
         id: 'c_roof_instandhaltungsruecklage',
@@ -260,6 +264,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 40,
     probability: 0.08,
     icon: 'Droplet',
+    requires: { hasHaftpflicht: true },
     choices: [
       {
         id: 'c_water_haftpflicht',
@@ -370,6 +375,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 40,
     probability: 0.08,
     icon: 'AlertTriangle',
+    requires: { hasHaftpflicht: true },
     choices: [
       {
         id: 'c_bike_haftpflicht',
