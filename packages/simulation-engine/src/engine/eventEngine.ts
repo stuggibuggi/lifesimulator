@@ -22,15 +22,9 @@ export function getEligibleEvents(
       return false;
     }
 
-    // Einmalige Ereignisse nicht mehrfach im selben Lebensabschnitt triggern
+    // Bereits getroffene Entscheidungen nicht erneut vorlegen
     if (pastEventIds.has(event.id)) {
-      if (
-        event.id.includes('ONCE') ||
-        event.id === 'EVT_EDUCATION_START' ||
-        event.id === 'EVT_FIRST_JOB'
-      ) {
-        return false;
-      }
+      return false;
     }
 
     return true;
