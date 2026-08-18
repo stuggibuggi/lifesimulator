@@ -57,9 +57,10 @@ router.post('/teacher/register', async (req, res) => {
       ok: true,
       needsVerification: true,
       mailSent: mailOk,
+      mailError: mailOk ? undefined : mailResult?.error,
       message: mailOk
         ? 'Konto angelegt. Bitte bestätige deine E-Mail über den Link in der Nachricht, bevor du dich anmeldest.'
-        : 'Konto angelegt, aber die Bestätigungsmail konnte nicht gesendet werden. Bitte später „Passwort vergessen“ nutzen oder den Admin kontaktieren.',
+        : 'Konto angelegt, aber die Bestätigungsmail konnte nicht gesendet werden. Bitte „Bestätigung erneut senden“ nutzen, sobald SMTP steht, oder den Admin kontaktieren.',
     });
   } catch (err) {
     console.error('[auth/register]', err);
@@ -169,6 +170,46 @@ router.post('/teacher/login', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Login fehlgeschlagen.' });
+  }
+});
+
+router.post('/teacher/resend-verification', async (req, res) => {
+  try {
+    const email = String(req.body.email || '')
+      .trim()
+      .toLowerCase();
+
+    const generic = {
+      ok: true,
+      message:
+        'Falls ein unbestätigtes Konto existiert, wurde die Bestätigungsmail erneut gesendet.',
+    };
+
+    if (!email || !email.includes('@')) {
+      return res.json(generic);
+    }
+
+    const rows = await query(
+      `SELECT id, email, email_verified_at FROM teachers WHERE email = ? LIMIT 1`,
+      [email]
+    );
+    if (rows.length && !rows[0].email_verified_at) {
+      const rawToken = createRawToken();
+      const tokenHash = hashToken(rawToken);
+      const expiresAt = toMysqlDatetime(hoursFromNow(48));
+      await query(
+        `UPDATE teachers
+         SET verification_token_hash = ?, verification_expires_at = ?
+         WHERE id = ?`,
+        [tokenHash, expiresAt, rows[0].id]
+      );
+      await sendVerificationEmail(email, rawToken);
+    }
+
+    res.json(generic);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Anfrage fehlgeschlagen.' });
   }
 });
 

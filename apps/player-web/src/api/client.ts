@@ -142,6 +142,13 @@ export async function teacherForgotPassword(email: string) {
   });
 }
 
+export async function teacherResendVerification(email: string) {
+  return apiFetch('/api/auth/teacher/resend-verification', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
 export async function teacherResetPassword(token: string, password: string) {
   return apiFetch('/api/auth/teacher/reset-password', {
     method: 'POST',

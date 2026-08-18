@@ -9,6 +9,7 @@
     "start": "node app.js",
     "migrate": "node src/db/migrate.js",
     "smoke": "node scripts/smoke.js",
+    "mail:test": "node scripts/mail-test.js",
     "build": "node scripts/build.js"
   },
   "dependencies": {

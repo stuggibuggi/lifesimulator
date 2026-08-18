@@ -8,6 +8,7 @@ import {
   teacherForgotPassword,
   teacherLogin,
   teacherRegister,
+  teacherResendVerification,
   teacherResetPassword,
   teacherVerify,
   getTeacherToken,
@@ -63,6 +64,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
   const [teacherView, setTeacherView] = useState<TeacherView>(
     getTeacherToken() ? 'LOGGED_IN' : 'AUTH'
   );
+  const [mailSent, setMailSent] = useState(true);
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
 
@@ -131,6 +133,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
     try {
       if (isRegister) {
         const data = await teacherRegister(email, password, displayName || undefined);
+        setMailSent(data.mailSent !== false);
         setTeacherView('CHECK_MAIL');
         setInfo(data.message || 'Bitte Bestätigungslink in der E-Mail öffnen.');
         sound.playPop();
@@ -389,10 +392,40 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
 
         {mode === 'TEACHER' && teacherView === 'CHECK_MAIL' && (
           <div className="space-y-3">
-            <p className="text-xs text-gray-700 font-medium leading-relaxed">
-              Prüfe dein Postfach (und den Spam-Ordner). Öffne den Link in der Mail, dann kannst du
-              dich anmelden bzw. das Passwort setzen.
-            </p>
+            {mailSent ? (
+              <p className="text-xs text-gray-700 font-medium leading-relaxed">
+                Prüfe dein Postfach (und den Spam-Ordner). Öffne den Link in der Mail, dann kannst du
+                dich anmelden bzw. das Passwort setzen.
+              </p>
+            ) : (
+              <p className="text-xs text-amber-900 font-medium leading-relaxed">
+                Die Mail konnte serverseitig nicht versendet werden. Sobald SMTP funktioniert, kannst
+                du die Bestätigung erneut anfordern.
+              </p>
+            )}
+            {email && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  setError(null);
+                  try {
+                    const data = await teacherResendVerification(email);
+                    setInfo(data.message);
+                    setMailSent(true);
+                    sound.playPop();
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : 'Senden fehlgeschlagen.');
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+                className="w-full py-2 rounded-xl bg-indigo-600 text-white font-extrabold text-xs disabled:opacity-50"
+              >
+                Bestätigung erneut senden
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setTeacherView('AUTH')}
