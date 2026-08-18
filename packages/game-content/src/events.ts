@@ -330,6 +330,43 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     ],
   },
   {
+    id: 'EVT_TRAVEL_CITY_BREAK',
+    title: 'Kurzreise: Städtetrip am langen Wochenende',
+    description:
+      'Du möchtest für ein verlängertes Wochenende eine spannende Stadt erkunden. Wie planst du die Reise?',
+    category: 'LIFESTYLE',
+    minAge: 18,
+    maxAge: 50,
+    probability: 0.12,
+    icon: 'Map',
+    choices: [
+      {
+        id: 'c_travel_budget_trip',
+        label: 'Budget-Trip mit Bahn und Hostel planen (-450 €)',
+        description:
+          'Du vergleichst Preise, buchst früh und hältst die Reisekosten im Rahmen.',
+        costImmediate: -450,
+        happinessDelta: 20,
+        stressDelta: -5,
+        knowledgeDelta: 15,
+        learningTip:
+          'Reisen werden planbarer, wenn du ein festes Freizeitbudget nutzt und früh Buchungsoptionen vergleichst.',
+      },
+      {
+        id: 'c_travel_luxury_trip',
+        label: 'Komfortreise mit Hotel und Extras gönnen (-1.400 €)',
+        description:
+          'Du buchst zentral, komfortabel und mit Restaurantbesuchen, zahlst dafür aber deutlich mehr.',
+        costImmediate: -1400,
+        happinessDelta: 30,
+        stressDelta: -10,
+        knowledgeDelta: 5,
+        learningTip:
+          'Erlebnisse sind wertvoll, sollten aber nicht den Notgroschen gefährden. Plane größere Reisen mit eigener Sparrate.',
+      },
+    ],
+  },
+  {
     id: 'EVT_PHONE_BROKEN',
     title: 'Smartphone-Malheur!',
     description:

@@ -6,6 +6,7 @@ import {
   getEligibleEvents,
   SeededRandom,
   stepSimulationMonth,
+  updateGoalsProgress,
 } from '../src';
 import { ALL_LIFE_EVENTS, ALL_LIFE_GOALS } from '@goal/game-content';
 import { LifeEvent } from '@goal/shared-types';
@@ -200,5 +201,51 @@ describe('Lebensereignisse berücksichtigen Eligibility-Regeln', () => {
     ] as LifeEvent[];
 
     expect(getEligibleEvents(events, state)).toHaveLength(0);
+  });
+});
+
+describe('GOAL_REISEN', () => {
+  it('wird nach dem Urlaubsnotfall und dem Städtetrip erreicht', () => {
+    const travelGoal = ALL_LIFE_GOALS.find((goal) => goal.id === 'GOAL_REISEN');
+    const cityBreakEvent = ALL_LIFE_EVENTS.find((event) => event.id === 'EVT_TRAVEL_CITY_BREAK');
+
+    expect(travelGoal).toBeDefined();
+    expect(cityBreakEvent).toBeDefined();
+    expect(cityBreakEvent?.minAge).toBe(18);
+    expect(cityBreakEvent?.maxAge).toBe(50);
+    expect(cityBreakEvent?.choices.map((choice) => choice.id)).toEqual([
+      'c_travel_budget_trip',
+      'c_travel_luxury_trip',
+    ]);
+
+    const state = {
+      ...freshState(),
+      goals: [{ ...travelGoal!, currentValue: 0, isAchieved: false }],
+      pastEvents: [
+        {
+          eventId: 'EVT_TRAVEL_HEALTH_EMERGENCY',
+          eventTitle: 'Urlaubsnotfall',
+          choiceId: 'c_travel_pay_self',
+          choiceLabel: 'Kosten selbst tragen',
+          age: 19,
+          month: 5,
+          financialImpact: -1100,
+        },
+        {
+          eventId: cityBreakEvent!.id,
+          eventTitle: cityBreakEvent!.title,
+          choiceId: 'c_travel_budget_trip',
+          choiceLabel: 'Budget-Städtetrip',
+          age: 22,
+          month: 7,
+          financialImpact: -450,
+        },
+      ],
+    };
+
+    const [updatedGoal] = updateGoalsProgress(state);
+
+    expect(updatedGoal.currentValue).toBe(2);
+    expect(updatedGoal.isAchieved).toBe(true);
   });
 });
