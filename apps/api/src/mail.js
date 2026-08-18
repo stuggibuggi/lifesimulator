@@ -17,6 +17,8 @@ function createTransport() {
   if (!smtpConfigured()) {
     return null;
   }
+  // Plesk local SMTP often needs relaxed TLS when host is localhost
+  const strictTls = process.env.SMTP_TLS_REJECT_UNAUTHORIZED === 'true';
   return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT || 587),
@@ -24,6 +26,9 @@ function createTransport() {
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
+    },
+    tls: {
+      rejectUnauthorized: strictTls,
     },
   });
 }
@@ -40,8 +45,16 @@ export async function sendMail({ to, subject, text, html }) {
     return { logged: true };
   }
 
-  await transport.sendMail({ from, to, subject, text, html });
-  return { sent: true };
+  try {
+    await transport.sendMail({ from, to, subject, text, html });
+    return { sent: true };
+  } catch (err) {
+    console.error('[mail] send failed:', err);
+    console.warn(`[mail] FALLBACK To: ${to}`);
+    console.warn(`[mail] FALLBACK Subject: ${subject}`);
+    console.warn(`[mail] FALLBACK ${text}`);
+    return { sent: false, error: String(err && err.message ? err.message : err) };
+  }
 }
 
 export function appPublicUrl() {
@@ -51,7 +64,7 @@ export function appPublicUrl() {
 export async function sendVerificationEmail(email, rawToken) {
   const link = `${appPublicUrl()}/?verifyTeacher=${encodeURIComponent(rawToken)}`;
   const text = `Willkommen bei GOAL.\n\nBitte bestätige deine E-Mail-Adresse:\n${link}\n\nDer Link ist 48 Stunden gültig.`;
-  await sendMail({
+  return sendMail({
     to: email,
     subject: 'GOAL – E-Mail bestätigen',
     text,
@@ -62,7 +75,7 @@ export async function sendVerificationEmail(email, rawToken) {
 export async function sendPasswordResetEmail(email, rawToken) {
   const link = `${appPublicUrl()}/?resetTeacher=${encodeURIComponent(rawToken)}`;
   const text = `Passwort zurücksetzen für GOAL:\n${link}\n\nDer Link ist 1 Stunde gültig. Wenn du das nicht warst, ignoriere diese Mail.`;
-  await sendMail({
+  return sendMail({
     to: email,
     subject: 'GOAL – Passwort zurücksetzen',
     text,

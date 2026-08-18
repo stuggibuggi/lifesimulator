@@ -50,16 +50,24 @@ router.post('/teacher/register', async (req, res) => {
       [email, passwordHash, displayName, tokenHash, expiresAt]
     );
 
-    await sendVerificationEmail(email, rawToken);
+    const mailResult = await sendVerificationEmail(email, rawToken);
+    const mailOk = Boolean(mailResult && (mailResult.sent || mailResult.logged));
 
     res.status(201).json({
       ok: true,
       needsVerification: true,
-      message:
-        'Konto angelegt. Bitte bestätige deine E-Mail über den Link in der Nachricht, bevor du dich anmeldest.',
+      mailSent: mailOk,
+      message: mailOk
+        ? 'Konto angelegt. Bitte bestätige deine E-Mail über den Link in der Nachricht, bevor du dich anmeldest.'
+        : 'Konto angelegt, aber die Bestätigungsmail konnte nicht gesendet werden. Bitte später „Passwort vergessen“ nutzen oder den Admin kontaktieren.',
     });
   } catch (err) {
     console.error(err);
+    if (err && (err.code === 'ER_BAD_FIELD_ERROR' || err.errno === 1054)) {
+      return res.status(500).json({
+        error: 'Datenbankschema veraltet. Bitte in apps/api: npm run migrate',
+      });
+    }
     res.status(500).json({ error: 'Registrierung fehlgeschlagen.' });
   }
 });

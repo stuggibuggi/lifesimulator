@@ -89,13 +89,20 @@ export function setStudentSession(session: StudentSession | null) {
 }
 
 async function apiFetch(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${getApiBase()}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${getApiBase()}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(options.headers || {}),
+      },
+    });
+  } catch {
+    throw new Error(
+      'API nicht erreichbar (Netzwerk/CORS). Prüfe, ob /api auf derselben Domain erreichbar ist und das Frontend neu gebaut wurde.'
+    );
+  }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || `API-Fehler ${res.status}`);
