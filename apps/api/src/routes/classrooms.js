@@ -6,6 +6,41 @@ import { makeRoomCode, makeSessionToken, parseJsonField } from '../util.js';
 
 const router = Router();
 const PIN_PATTERN = /^\d{4,6}$/;
+const PIN_FAIL_LIMIT = 5;
+const PIN_COOLDOWN_MS = 60 * 1000;
+const failedPinAttempts = new Map();
+
+function getClientIp(req) {
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+function makeFailedPinKey(classroomId, alias, clientIp) {
+  return `${classroomId}:${alias}:${clientIp}`;
+}
+
+function getActivePinCooldown(key, now = Date.now()) {
+  const attempt = failedPinAttempts.get(key);
+  if (!attempt) return null;
+
+  if (attempt.lockedUntil && attempt.lockedUntil > now) {
+    return attempt.lockedUntil;
+  }
+
+  if (attempt.lockedUntil && attempt.lockedUntil <= now) {
+    failedPinAttempts.delete(key);
+  }
+
+  return null;
+}
+
+function recordFailedPinAttempt(key, now = Date.now()) {
+  const previous = failedPinAttempts.get(key);
+  const count = (previous?.count || 0) + 1;
+  failedPinAttempts.set(key, {
+    count,
+    lockedUntil: count >= PIN_FAIL_LIMIT ? now + PIN_COOLDOWN_MS : null,
+  });
+}
 
 router.post('/', requireTeacher, async (req, res) => {
   try {
@@ -115,14 +150,29 @@ router.post('/join', async (req, res) => {
         });
       }
 
+      const failedPinKey = makeFailedPinKey(room.id, alias, getClientIp(req));
+      const lockedUntil = getActivePinCooldown(failedPinKey);
+      if (lockedUntil) {
+        const retryAfterSeconds = Math.ceil((lockedUntil - Date.now()) / 1000);
+        return res
+          .set('Retry-After', String(retryAfterSeconds))
+          .status(429)
+          .json({
+            error: 'PIN wurde zu oft falsch eingegeben. Bitte warte 60 Sekunden und versuche es erneut.',
+          });
+      }
+
       const pinOk =
         existingMembership.pin_hash && (await bcrypt.compare(pin, existingMembership.pin_hash));
       if (!pinOk) {
+        recordFailedPinAttempt(failedPinKey);
         return res.status(401).json({
           error: 'PIN stimmt nicht. Bitte prüfe Alias und PIN.',
           needsPin: true,
         });
       }
+
+      failedPinAttempts.delete(failedPinKey);
 
       await query('UPDATE memberships SET session_token = ?, last_seen_at = NOW() WHERE id = ?', [
         sessionToken,

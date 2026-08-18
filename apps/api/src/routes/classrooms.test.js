@@ -133,6 +133,65 @@ describe('POST /api/classrooms/join', () => {
     expect(response.data.needsPin).toBe(true);
   });
 
+  it('throttles repeated wrong PIN attempts for the same alias and client', async () => {
+    const existingPinHash = await bcrypt.hash('1234', 10);
+
+    query.mockImplementation(async (sql) => {
+      if (sql.includes('FROM classrooms')) return [mockClassroom()];
+      if (sql.includes('FROM memberships')) return [
+        { id: 77, pin_hash: existingPinHash, session_token: 'old-session' },
+      ];
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await postJoin({ roomCode: 'abc123', alias: 'ThrottleMax', pin: '9999' });
+      expect(response.status).toBe(401);
+      expect(response.data.needsPin).toBe(true);
+    }
+
+    const response = await postJoin({ roomCode: 'abc123', alias: 'ThrottleMax', pin: '9999' });
+
+    expect(response.status).toBe(429);
+    expect(response.data.error).toContain('zu oft falsch eingegeben');
+  });
+
+  it('clears failed PIN attempts after a successful resume', async () => {
+    const existingPinHash = await bcrypt.hash('1234', 10);
+    let updateCount = 0;
+
+    query.mockImplementation(async (sql) => {
+      if (sql.includes('FROM classrooms')) return [mockClassroom()];
+      if (sql.includes('FROM memberships')) return [
+        { id: 77, pin_hash: existingPinHash, session_token: 'old-session' },
+      ];
+      if (sql.includes('UPDATE memberships')) {
+        updateCount += 1;
+        return { affectedRows: 1 };
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    });
+
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const response = await postJoin({ roomCode: 'abc123', alias: 'ResetMax', pin: '9999' });
+      expect(response.status).toBe(401);
+    }
+
+    const success = await postJoin({ roomCode: 'abc123', alias: 'ResetMax', pin: '1234' });
+
+    expect(success.status).toBe(200);
+    expect(updateCount).toBe(1);
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await postJoin({ roomCode: 'abc123', alias: 'ResetMax', pin: '9999' });
+      expect(response.status).toBe(401);
+    }
+
+    const response = await postJoin({ roomCode: 'abc123', alias: 'ResetMax', pin: '9999' });
+
+    expect(response.status).toBe(429);
+  });
+
   it('rotates the session token and returns the existing membership for a correct PIN', async () => {
     const existingPinHash = await bcrypt.hash('1234', 10);
     let updateParams;
