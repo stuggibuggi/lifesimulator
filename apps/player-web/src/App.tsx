@@ -26,7 +26,7 @@ import { EvaluationView } from './components/EvaluationView';
 import { ClassroomAuthModal } from './components/ClassroomAuthModal';
 
 export const App: React.FC = () => {
-  const { gamePhase, gameState, activeModal, setActiveModal, closeModal } = useGameStore();
+  const { gamePhase, gameState, activeModal, eventChoiceFeedback, setActiveModal, closeModal } = useGameStore();
 
   useEffect(() => {
     try {
@@ -187,7 +187,7 @@ export const App: React.FC = () => {
           </main>
 
           {/* Active Event Dilemma Modal (only triggers when running and unpaused) */}
-          {gameState.activeEvent && <EventModal />}
+          {(gameState.activeEvent || eventChoiceFeedback) && <EventModal />}
 
           {/* Location / Action Modals */}
           {activeModal === 'PHONE_MODAL' && <PhoneModal />}

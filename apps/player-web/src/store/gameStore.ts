@@ -66,6 +66,13 @@ export type ActiveModal =
   | 'JOIN_CLASS_MODAL'
   | null;
 
+export interface EventChoiceFeedback {
+  eventTitle: string;
+  choiceLabel: string;
+  learningTip: string;
+  financialImpact: number;
+}
+
 interface GameStoreState {
   gameState: GameState | null;
   gamePhase: GamePhase;
@@ -74,6 +81,7 @@ interface GameStoreState {
   tempGoals: LifeGoal[];
   selectedScenario: EducationalScenario | null;
   prng: SeededRandom | null;
+  eventChoiceFeedback: EventChoiceFeedback | null;
 
   // Actions
   startNewGame: () => void;
@@ -90,6 +98,7 @@ interface GameStoreState {
   setSpeed: (speed: 1 | 2 | 5) => void;
 
   handleEventChoice: (choice: EventChoice) => void;
+  dismissEventFeedback: () => void;
   handleToggleInsurance: (insurance: InsuranceContract, deductible?: number, healthPreCondition?: boolean) => void;
   handleSetSavingsRates: (emergencyRate: number, etfRate: number) => void;
   handleTakeLoan: (title: string, amount: number, interest: number, months: number, type?: any) => void;
@@ -122,6 +131,24 @@ function persistLocal(state: GameState) {
   } catch {
     // Ignore
   }
+}
+
+function createEventChoiceFeedback(
+  updatedState: GameState,
+  eventId: string,
+  eventTitle: string,
+  choice: EventChoice
+): EventChoiceFeedback {
+  const appliedChoice = [...updatedState.pastEvents]
+    .reverse()
+    .find((pastEvent) => pastEvent.eventId === eventId && pastEvent.choiceId === choice.id);
+
+  return {
+    eventTitle,
+    choiceLabel: choice.label,
+    learningTip: choice.learningTip,
+    financialImpact: appliedChoice?.financialImpact ?? choice.costImmediate,
+  };
 }
 
 async function maybeCloudSave(state: GameState, force = false) {
@@ -220,6 +247,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   tempGoals: [],
   selectedScenario: null,
   prng: null,
+  eventChoiceFeedback: null,
 
   startNewGame: () => {
     sound.playPop();
@@ -234,6 +262,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       tempGoals: [],
       selectedScenario: EDUCATIONAL_SCENARIOS[0],
       activeModal: null,
+      eventChoiceFeedback: null,
     });
   },
 
@@ -355,6 +384,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       prng: rng,
       gamePhase: 'PLAYING',
       activeModal: null,
+      eventChoiceFeedback: null,
     });
   },
 
@@ -410,6 +440,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       prng: rng,
       gamePhase: 'PLAYING',
       activeModal: null,
+      eventChoiceFeedback: null,
     });
 
     try {
@@ -508,7 +539,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (!gameState || !gameState.activeEvent) return;
 
     sound.playPop();
-    const updatedState = applyEventChoice(gameState, gameState.activeEvent, choice);
+    const event = gameState.activeEvent;
+    const updatedState = applyEventChoice(gameState, event, choice);
+    const eventChoiceFeedback = createEventChoiceFeedback(updatedState, event.id, event.title, choice);
 
     const newAchieved = updatedState.goals.some(
       (g, idx) => g.isAchieved && !gameState.goals[idx].isAchieved
@@ -518,9 +551,18 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       confetti({ particleCount: 80, spread: 60 });
     }
 
-    set({ gameState: updatedState });
+    set({ gameState: updatedState, eventChoiceFeedback });
     persistLocal(updatedState);
     void maybeCloudSave(updatedState, true);
+  },
+
+  dismissEventFeedback: () => {
+    const { gameState } = get();
+    sound.playPop();
+    set({
+      eventChoiceFeedback: null,
+      gameState: gameState ? { ...gameState, activeEvent: null } : gameState,
+    });
   },
 
   handleToggleInsurance: (insurance, deductible, healthPreCondition) => {
@@ -656,6 +698,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         prng: new SeededRandom(sanitized.seed),
         gamePhase: sanitized.isGameOver ? 'EVALUATION' : 'PLAYING',
         activeModal: null,
+        eventChoiceFeedback: null,
       });
       return true;
     } catch {
@@ -680,6 +723,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         prng: new SeededRandom(sanitized.seed),
         gamePhase: sanitized.isGameOver ? 'EVALUATION' : 'PLAYING',
         activeModal: null,
+        eventChoiceFeedback: null,
       });
       return true;
     } catch {
@@ -697,6 +741,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       tempGoals: [],
       selectedScenario: null,
       prng: null,
+      eventChoiceFeedback: null,
     });
   },
 }));
