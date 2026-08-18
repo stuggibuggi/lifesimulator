@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg_ambitious" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#dcfce7" />
+      <stop offset="100%" stopColor="#bbf7d0" />
+    </linearGradient>
+    <linearGradient id="skin" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#fff1e6" />
+      <stop offset="100%" stopColor="#fed7aa" />
+    </linearGradient>
+    <linearGradient id="hair_ambitious" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#1e3a8a" />
+      <stop offset="100%" stopColor="#172554" />
+    </linearGradient>
+    <linearGradient id="suit_ambitious" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#10b981" />
+      <stop offset="100%" stopColor="#047857" />
+    </linearGradient>
+  </defs>
+  <!-- Background Circle -->
+  <circle cx="60" cy="60" r="56" fill="url(#bg_ambitious)" stroke="#4ade80" stroke-width="4" />
+  
+  <!-- Shoulders / Neat Vest & Tie -->
+  <path d="M22,110 Q60,82 98,110 L98,120 L22,120 Z" fill="url(#suit_ambitious)" />
+  <path d="M46,96 L60,112 L74,96 Z" fill="#ffffff" />
+  <polygon points="57,98 63,98 61,114 59,114" fill="#0284c7" />
+  
+  <!-- Neck -->
+  <rect x="52" y="72" width="16" height="18" fill="url(#skin)" rx="4" />
+  
+  <!-- Head Base -->
+  <ellipse cx="60" cy="54" rx="26" ry="28" fill="url(#skin)" />
+  <circle cx="34" cy="54" r="6.5" fill="url(#skin)" />
+  <circle cx="86" cy="54" r="6.5" fill="url(#skin)" />
+  
+  <!-- Hair Neat Side Part -->
+  <path d="M30,48 Q60,14 90,48 Q94,26 80,16 Q60,10 40,16 Q26,26 30,48 Z" fill="url(#hair_ambitious)" />
+  
+  <!-- Smart Round Glasses -->
+  <circle cx="48" cy="53" r="10" fill="#ffffff" opacity="0.4" stroke="#d97706" stroke-width="2" />
+  <circle cx="72" cy="53" r="10" fill="#ffffff" opacity="0.4" stroke="#d97706" stroke-width="2" />
+  <line x1="58" y1="53" x2="62" y2="53" stroke="#d97706" stroke-width="2.5" />
+  <line x1="38" y1="52" x2="34" y2="50" stroke="#d97706" stroke-width="2" />
+  <line x1="82" y1="52" x2="86" y2="50" stroke="#d97706" stroke-width="2" />
+  
+  <!-- Eyes Behind Glasses -->
+  <ellipse cx="48" cy="53" rx="4" ry="5.5" fill="#1e293b" />
+  <circle cx="46.5" cy="51" r="1.8" fill="#ffffff" />
+  
+  <ellipse cx="72" cy="53" rx="4" ry="5.5" fill="#1e293b" />
+  <circle cx="70.5" cy="51" r="1.8" fill="#ffffff" />
+  
+  <!-- Eyebrows -->
+  <path d="M43,39 Q48,36 53,39" stroke="#172554" stroke-width="2.5" stroke-linecap="round" fill="none" />
+  <path d="M67,39 Q72,36 77,39" stroke="#172554" stroke-width="2.5" stroke-linecap="round" fill="none" />
+  
+  <!-- Cheeks Blush -->
+  <ellipse cx="42" cy="64" rx="4.5" ry="2" fill="#f43f5e" opacity="0.3" />
+  <ellipse cx="78" cy="64" rx="4.5" ry="2" fill="#f43f5e" opacity="0.3" />
+  
+  <!-- Smile -->
+  <path d="M55,67 Q60,72 65,67" stroke="#065f46" stroke-width="2" stroke-linecap="round" fill="none" />
+  
+  <!-- Neat Bangs -->
+  <path d="M34,40 Q48,30 58,40 Q68,32 86,42 Q80,24 60,18 Q40,22 34,40 Z" fill="url(#hair_ambitious)" />
+</svg>

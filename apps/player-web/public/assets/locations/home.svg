@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="home_sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#fff7ed" />
+      <stop offset="100%" stopColor="#fed7aa" />
+    </linearGradient>
+    <linearGradient id="home_roof" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#ea580c" />
+      <stop offset="100%" stopColor="#9a3412" />
+    </linearGradient>
+    <linearGradient id="home_wall" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#ffffff" />
+      <stop offset="100%" stopColor="#fef3c7" />
+    </linearGradient>
+    <filter id="h_shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="4" flood-opacity="0.1" />
+    </filter>
+  </defs>
+  
+  <rect width="200" height="200" rx="30" fill="url(#home_sky)" />
+  <ellipse cx="100" cy="165" rx="80" ry="25" fill="#fde68a" />
+  
+  <!-- House Walls -->
+  <rect x="45" y="80" width="110" height="75" rx="4" fill="url(#home_wall)" stroke="#fcd34d" stroke-width="2" filter="url(#h_shadow)" />
+  
+  <!-- Roof -->
+  <polygon points="30,85 100,30 170,85" fill="url(#home_roof)" stroke="#7c2d12" stroke-width="2" filter="url(#h_shadow)" />
+  
+  <!-- Chimney -->
+  <rect x="130" y="38" width="16" height="25" fill="#c2410c" rx="2" />
+  <!-- Smoke Clouds -->
+  <circle cx="138" cy="28" r="4" fill="#ffffff" opacity="0.8" />
+  <circle cx="143" cy="20" r="5" fill="#ffffff" opacity="0.6" />
+  
+  <!-- Attic Window -->
+  <circle cx="100" cy="62" r="9" fill="#bae6fd" stroke="#ea580c" stroke-width="2" />
+  <line x1="91" y1="62" x2="109" y2="62" stroke="#ea580c" stroke-width="1.5" />
+  <line x1="100" y1="53" x2="100" y2="71" stroke="#ea580c" stroke-width="1.5" />
+  
+  <!-- Front Door -->
+  <rect x="85" y="105" width="30" height="50" rx="3" fill="#78350f" />
+  <circle cx="108" cy="130" r="2.5" fill="#facc15" />
+  
+  <!-- Windows -->
+  <rect x="55" y="100" width="22" height="25" rx="3" fill="#bae6fd" stroke="#d97706" stroke-width="1.5" />
+  <rect x="123" y="100" width="22" height="25" rx="3" fill="#bae6fd" stroke="#d97706" stroke-width="1.5" />
+  
+  <!-- Flowers in Garden -->
+  <circle cx="40" cy="155" r="7" fill="#f43f5e" />
+  <circle cx="160" cy="155" r="7" fill="#fbbf24" />
+</svg>

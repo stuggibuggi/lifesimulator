@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <defs>
+    <linearGradient id="evt_car_bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#fff7ed" />
+      <stop offset="100%" stopColor="#fed7aa" />
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="24" fill="url(#evt_car_bg)" />
+  
+  <!-- Red Car -->
+  <g transform="translate(25, 45)">
+    <!-- Body -->
+    <path d="M15,55 L25,30 Q40,15 70,15 L85,30 L105,45 L105,65 L5,65 L5,55 Z" fill="#ef4444" stroke="#b91c1c" stroke-width="2" />
+    <!-- Windows -->
+    <path d="M30,30 L45,20 L65,20 L65,30 Z" fill="#bae6fd" />
+    <path d="M70,20 L80,30 L95,45 L70,45 Z" fill="#bae6fd" />
+    <!-- Headlight -->
+    <polygon points="100,50 105,50 105,58 98,58" fill="#fef08a" />
+    <!-- Wheels -->
+    <circle cx="30" cy="65" r="14" fill="#334155" />
+    <circle cx="30" cy="65" r="6" fill="#94a3b8" />
+    <circle cx="85" cy="65" r="14" fill="#334155" />
+    <circle cx="85" cy="65" r="6" fill="#94a3b8" />
+  </g>
+  
+  <!-- Car Key & Sparkle -->
+  <g transform="translate(105, 20)">
+    <circle cx="15" cy="15" r="10" fill="#facc15" stroke="#ca8a04" stroke-width="2" />
+    <circle cx="15" cy="15" r="4" fill="#ffffff" />
+    <rect x="22" y="12" width="18" height="6" fill="#ca8a04" rx="1" />
+  </g>
+</svg>

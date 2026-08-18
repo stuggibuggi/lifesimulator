@@ -1,0 +1,251 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="100%" height="100%">
+  <defs>
+    <!-- Gradients for Sky and Atmosphere -->
+    <linearGradient id="g_sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#e0f2fe" />
+      <stop offset="60%" stopColor="#f8fafc" />
+      <stop offset="100%" stopColor="#fdfbf7" />
+    </linearGradient>
+
+    <!-- Roof Gradients (Terracotta & Slate) -->
+    <linearGradient id="g_terracotta" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#ea580c" />
+      <stop offset="50%" stopColor="#c2410c" />
+      <stop offset="100%" stopColor="#9a3412" />
+    </linearGradient>
+    <linearGradient id="g_slate_roof" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#475569" />
+      <stop offset="100%" stopColor="#1e293b" />
+    </linearGradient>
+    <linearGradient id="g_copper_green" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#34d399" />
+      <stop offset="100%" stopColor="#059669" />
+    </linearGradient>
+    <linearGradient id="g_timber_wall" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#fffbeb" />
+      <stop offset="100%" stopColor="#fef3c7" />
+    </linearGradient>
+
+    <!-- Road & Cobblestone Gradients -->
+    <linearGradient id="g_asphalt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#64748b" />
+      <stop offset="100%" stopColor="#475569" />
+    </linearGradient>
+    <linearGradient id="g_cobble" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#e2e8f0" />
+      <stop offset="100%" stopColor="#cbd5e1" />
+    </linearGradient>
+    <linearGradient id="g_bikelane" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#f87171" />
+      <stop offset="100%" stopColor="#ef4444" />
+    </linearGradient>
+
+    <!-- Soft Drop Shadows -->
+    <filter id="cozy_drop" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.15" />
+    </filter>
+    <filter id="soft_shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.08" />
+    </filter>
+  </defs>
+
+  <!-- Sky & Horizon -->
+  <rect width="1200" height="700" fill="url(#g_sky)" />
+
+  <!-- Distant European Rolling Hills & Forests -->
+  <path d="M0,260 Q300,180 600,240 T1200,200 L1200,700 L0,700 Z" fill="#d1fae5" opacity="0.6" />
+  <path d="M0,310 Q400,240 800,290 T1200,260 L1200,700 L0,700 Z" fill="#bbf7d0" opacity="0.8" />
+
+  <!-- Isometric Town Ground Base (Green Meadow / Park Lands) -->
+  <polygon points="600,100 1180,400 600,700 20,400" fill="#86efac" />
+  <polygon points="600,115 1160,400 600,685 40,400" fill="#a7f3d0" />
+
+  <!-- === ISOMETRIC ROAD NETWORK (German Town Layout) === -->
+  <!-- Main Arterial Road 1 (NW to SE) -->
+  <polygon points="250,220 400,145 950,420 800,495" fill="url(#g_asphalt)" />
+  <!-- Main Cross Road 2 (SW to NE) -->
+  <polygon points="250,480 400,555 950,280 800,205" fill="url(#g_asphalt)" />
+
+  <!-- Red German Bike Lane Along Road -->
+  <polygon points="275,232 300,220 850,495 825,507" fill="url(#g_bikelane)" opacity="0.85" />
+
+  <!-- Cobblestone Market Square in the Center -->
+  <polygon points="600,280 720,340 600,400 480,340" fill="url(#g_cobble)" stroke="#94a3b8" stroke-width="1.5" />
+  <!-- Central Town Fountain (Marktbrunnen) -->
+  <g transform="translate(600, 340)">
+    <ellipse cx="0" cy="0" rx="26" ry="13" fill="#38bdf8" stroke="#cbd5e1" stroke-width="3" />
+    <ellipse cx="0" cy="-6" rx="14" ry="7" fill="#0284c7" />
+    <!-- Water jet -->
+    <path d="M0,-6 Q2,-22 0,-26 Q-2,-22 0,-6" fill="#e0f2fe" />
+  </g>
+
+  <!-- Zebrastreifen (German Pedestrian Crosswalks) -->
+  <g stroke="#ffffff" stroke-width="4" stroke-linecap="round">
+    <line x1="480" y1="280" x2="520" y2="300" stroke-dasharray="6,4" />
+    <line x1="680" y1="380" x2="720" y2="400" stroke-dasharray="6,4" />
+    <line x1="480" y1="400" x2="520" y2="380" stroke-dasharray="6,4" />
+    <line x1="680" y1="300" x2="720" y2="280" stroke-dasharray="6,4" />
+  </g>
+
+  <!-- === LOCATION 1: FACHWERKHAUS / MEIN ZUHAUSE (Top Left) === -->
+  <g transform="translate(180, 160)" filter="url(#cozy_drop)">
+    <!-- Shadow -->
+    <ellipse cx="70" cy="130" rx="65" ry="30" fill="#000000" opacity="0.2" />
+    <!-- Walls (Cream plaster) -->
+    <polygon points="15,65 70,35 125,65 125,125 70,155 15,125" fill="url(#g_timber_wall)" stroke="#78350f" stroke-width="2" />
+    <polygon points="15,65 70,35 70,155 15,125" fill="#fef3c7" />
+    <polygon points="70,35 125,65 125,125 70,155" fill="#fde68a" />
+    
+    <!-- German Half-Timbering Wood Beams (Fachwerk-Balken) -->
+    <!-- Left Wall Beams -->
+    <line x1="15" y1="95" x2="70" y2="65" stroke="#78350f" stroke-width="3" />
+    <line x1="15" y1="65" x2="70" y2="125" stroke="#78350f" stroke-width="2" />
+    <line x1="42" y1="50" x2="42" y2="140" stroke="#78350f" stroke-width="2.5" />
+    <!-- Right Wall Beams -->
+    <line x1="70" y1="65" x2="125" y2="95" stroke="#78350f" stroke-width="3" />
+    <line x1="70" y1="125" x2="125" y2="65" stroke="#78350f" stroke-width="2" />
+    <line x1="98" y1="50" x2="98" y2="140" stroke="#78350f" stroke-width="2.5" />
+    
+    <!-- Terracotta Tile Roof -->
+    <polygon points="70,0 140,40 70,80 0,40" fill="url(#g_terracotta)" />
+    <!-- Roof Chimney -->
+    <polygon points="90,15 105,7 105,30 90,38" fill="#b91c1c" />
+    <circle cx="98" cy="5" r="4" fill="#ffffff" opacity="0.6" />
+    
+    <!-- Wooden Door & Flower Window Boxes -->
+    <polygon points="30,100 52,88 52,128 30,140" fill="#451a03" />
+    <!-- Window with flower box -->
+    <polygon points="85,85 110,98 110,115 85,102" fill="#bae6fd" stroke="#78350f" stroke-width="1.5" />
+    <rect x="83" y="112" width="28" height="6" rx="2" fill="#ef4444" />
+    <circle cx="88" cy="113" r="2.5" fill="#facc15" />
+    <circle cx="98" cy="113" r="2.5" fill="#ffffff" />
+    <circle cx="106" cy="113" r="2.5" fill="#facc15" />
+  </g>
+
+  <!-- === LOCATION 2: HISTORISCHES RATHAUS & CAMPUS (Top Right) === -->
+  <g transform="translate(780, 130)" filter="url(#cozy_drop)">
+    <ellipse cx="80" cy="140" rx="75" ry="32" fill="#000000" opacity="0.2" />
+    <!-- Red Brick Walls -->
+    <polygon points="20,70 80,35 140,70 140,140 80,175 20,140" fill="#f87171" stroke="#991b1b" stroke-width="2" />
+    <polygon points="20,70 80,35 80,175 20,140" fill="#ef4444" />
+    <polygon points="80,35 140,70 140,140 80,175" fill="#dc2626" />
+    
+    <!-- Copper Green Patina Roof -->
+    <polygon points="80,5 155,48 80,90 5,48" fill="url(#g_copper_green)" />
+    
+    <!-- German Clock / Bell Tower (Rathausturm) -->
+    <polygon points="65,-25 95,-10 95,25 65,10" fill="#f8fafc" stroke="#64748b" stroke-width="1.5" />
+    <polygon points="80,-48 100,-35 80,-22 60,-35" fill="#047857" />
+    <circle cx="80" cy="0" r="7" fill="#fef08a" stroke="#1e293b" stroke-width="1.5" />
+    <!-- Clock Hands -->
+    <line x1="80" y1="0" x2="80" y2="-4" stroke="#1e293b" stroke-width="1.5" />
+    <line x1="80" y1="0" x2="83" y2="0" stroke="#1e293b" stroke-width="1.5" />
+    
+    <!-- Grand Arched Windows -->
+    <path d="M35,95 Q45,85 55,95 L55,125 L35,115 Z" fill="#bae6fd" stroke="#991b1b" stroke-width="1" />
+    <path d="M100,105 Q110,95 120,105 L120,135 L100,145 Z" fill="#bae6fd" stroke="#991b1b" stroke-width="1" />
+  </g>
+
+  <!-- === LOCATION 3: SPARKASSE & BANK (Bottom Left) === -->
+  <g transform="translate(130, 360)" filter="url(#cozy_drop)">
+    <ellipse cx="70" cy="130" rx="65" ry="28" fill="#000000" opacity="0.2" />
+    <!-- Classical White Stone Facade with Red Sparkasse Accents -->
+    <polygon points="15,65 70,35 125,65 125,130 70,160 15,130" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" />
+    <polygon points="15,65 70,35 70,160 15,130" fill="#f1f5f9" />
+    <polygon points="70,35 125,65 125,130 70,160" fill="#e2e8f0" />
+    
+    <!-- Slate Roof -->
+    <polygon points="70,10 135,45 70,80 5,45" fill="url(#g_slate_roof)" />
+    
+    <!-- Sparkasse Red Banner & Gold Coin -->
+    <rect x="35" y="65" width="70" height="12" rx="2" fill="#ef4444" />
+    <circle cx="70" cy="50" r="12" fill="#facc15" stroke="#ca8a04" stroke-width="2" />
+    <text x="70" y="55" text-anchor="middle" fill="#713f12" font-size="13" font-weight="900" font-family="sans-serif">€</text>
+    
+    <!-- Modern ATM (Geldautomat) on wall -->
+    <rect x="30" y="105" width="20" height="25" rx="2" fill="#1e293b" />
+    <rect x="33" y="110" width="14" height="8" fill="#38bdf8" />
+  </g>
+
+  <!-- === LOCATION 4: DEUTSCHER HANDWERKSBETRIEB & ARBEITSPLATZ (Bottom Right) === -->
+  <g transform="translate(840, 350)" filter="url(#cozy_drop)">
+    <ellipse cx="75" cy="135" rx="70" ry="30" fill="#000000" opacity="0.2" />
+    <!-- Modern Brick / Concrete Workshop Building -->
+    <polygon points="15,60 75,30 135,60 135,130 75,160 15,130" fill="#f1f5f9" stroke="#64748b" stroke-width="2" />
+    <polygon points="15,60 75,30 75,160 15,130" fill="#e2e8f0" />
+    <polygon points="75,30 135,60 135,130 75,160" fill="#cbd5e1" />
+    
+    <!-- Sawtooth Factory / Office Roof -->
+    <polygon points="75,5 145,40 75,75 5,40" fill="url(#g_slate_roof)" />
+    
+    <!-- Workshop Roller Shutter Gate -->
+    <polygon points="30,95 65,78 65,135 30,150" fill="#94a3b8" stroke="#475569" stroke-width="1.5" />
+    <!-- Large Glass Studio Windows -->
+    <polygon points="85,75 120,92 120,125 85,108" fill="#bae6fd" stroke="#0284c7" stroke-width="1.5" />
+    
+    <!-- Gear / Industry Emblem -->
+    <circle cx="75" cy="50" r="10" fill="#f97316" stroke="#c2410c" stroke-width="1.5" />
+    <circle cx="75" cy="50" r="4" fill="#ffffff" />
+  </g>
+
+  <!-- === LOCATION 5: DEUTSCHER STADTPARK & BIERGARTEN (Center Bottom) === -->
+  <g transform="translate(460, 420)">
+    <!-- Lush Park Lawn -->
+    <ellipse cx="140" cy="110" rx="130" ry="60" fill="#6ee7b7" stroke="#34d399" stroke-width="3" />
+    
+    <!-- Serene Duck Pond (Ententeich) -->
+    <ellipse cx="130" cy="125" rx="55" ry="25" fill="#38bdf8" stroke="#0284c7" stroke-width="2" />
+    <ellipse cx="115" cy="120" rx="4" ry="2" fill="#facc15" /> <!-- Duck -->
+    
+    <!-- Majestic German Oak Tree (Deutsche Eiche) -->
+    <g transform="translate(140, 40)">
+      <path d="M15,65 Q10,35 5,0 Q20,35 25,65 Z" fill="#78350f" />
+      <circle cx="-20" cy="-20" r="32" fill="#15803d" opacity="0.9" />
+      <circle cx="25" cy="-25" r="36" fill="#16a34a" opacity="0.9" />
+      <circle cx="5" cy="-50" r="34" fill="#22c55e" opacity="0.95" />
+    </g>
+    
+    <!-- Park Benches & Streetlamp -->
+    <g transform="translate(60, 100)">
+      <rect x="0" y="0" width="22" height="6" rx="2" fill="#78350f" />
+      <line x1="3" y1="6" x2="3" y2="12" stroke="#1e293b" stroke-width="2" />
+      <line x1="19" y1="6" x2="19" y2="12" stroke="#1e293b" stroke-width="2" />
+    </g>
+    
+    <!-- Old-Style Cast Iron Streetlamp (Kandelaber) -->
+    <g transform="translate(210, 80)">
+      <line x1="0" y1="30" x2="0" y2="0" stroke="#1e293b" stroke-width="3" />
+      <circle cx="0" cy="-4" r="5" fill="#fef08a" stroke="#1e293b" stroke-width="1.5" />
+    </g>
+  </g>
+
+  <!-- === LOCATION 6: VERSICHERUNGSBÜRO (Center Left) === -->
+  <g transform="translate(290, 270)" filter="url(#cozy_drop)">
+    <ellipse cx="50" cy="85" rx="45" ry="20" fill="#000000" opacity="0.18" />
+    <polygon points="10,40 50,20 90,40 90,85 50,105 10,85" fill="#ffffff" stroke="#d97706" stroke-width="2" />
+    <polygon points="50,5 95,28 50,50 5,28" fill="#f59e0b" />
+    <!-- Golden Shield Badge -->
+    <circle cx="50" cy="62" r="9" fill="#facc15" stroke="#b45309" stroke-width="1.5" />
+    <path d="M46,60 L49,65 L55,57" fill="none" stroke="#047857" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+
+  <!-- === LOCATION 7: BÄCKEREI & MARKTSTAND (Center Right) === -->
+  <g transform="translate(710, 260)" filter="url(#cozy_drop)">
+    <ellipse cx="50" cy="85" rx="45" ry="20" fill="#000000" opacity="0.18" />
+    <polygon points="10,40 50,20 90,40 90,85 50,105 10,85" fill="#fff1f2" stroke="#f43f5e" stroke-width="2" />
+    <!-- Red-White Striped German Bakery Awning -->
+    <polygon points="50,5 95,28 50,50 5,28" fill="#ef4444" />
+    <!-- Brezel (Pretzel) Sign for Bakery -->
+    <circle cx="50" cy="62" r="10" fill="#fed7aa" stroke="#9a3412" stroke-width="2" />
+    <path d="M45,62 Q50,56 55,62" stroke="#9a3412" stroke-width="2" fill="none" />
+  </g>
+
+  <!-- German Street Signs & Details -->
+  <!-- Cute Compact German Car driving on road -->
+  <g transform="translate(520, 240) scale(0.85)">
+    <polygon points="15,10 40,-5 80,10 55,28 0,28" fill="#3b82f6" />
+    <polygon points="25,8 40,-2 60,8 48,16" fill="#bae6fd" />
+    <circle cx="15" cy="28" r="6" fill="#1e293b" />
+    <circle cx="65" cy="28" r="6" fill="#1e293b" />
+  </g>
+</svg>

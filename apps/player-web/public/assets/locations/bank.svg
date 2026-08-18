@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bank_sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#ecfdf5" />
+      <stop offset="100%" stopColor="#d1fae5" />
+    </linearGradient>
+    <linearGradient id="bank_roof" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#10b981" />
+      <stop offset="100%" stopColor="#047857" />
+    </linearGradient>
+    <linearGradient id="bank_wall" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#ffffff" />
+      <stop offset="100%" stopColor="#f1f5f9" />
+    </linearGradient>
+    <filter id="b_shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="4" flood-opacity="0.1" />
+    </filter>
+  </defs>
+  
+  <rect width="200" height="200" rx="30" fill="url(#bank_sky)" />
+  
+  <!-- Ground Grass -->
+  <ellipse cx="100" cy="165" rx="80" ry="25" fill="#a7f3d0" />
+  
+  <!-- Bank Base -->
+  <rect x="35" y="145" width="130" height="15" rx="3" fill="#cbd5e1" filter="url(#b_shadow)" />
+  <rect x="42" y="75" width="116" height="72" fill="url(#bank_wall)" stroke="#cbd5e1" stroke-width="2" />
+  
+  <!-- Classical Pillars -->
+  <rect x="52" y="80" width="12" height="65" rx="2" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+  <rect x="76" y="80" width="12" height="65" rx="2" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+  <rect x="112" y="80" width="12" height="65" rx="2" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+  <rect x="136" y="80" width="12" height="65" rx="2" fill="#e2e8f0" stroke="#cbd5e1" stroke-width="1.5" />
+  
+  <!-- Bank Entrance Door -->
+  <rect x="92" y="100" width="16" height="45" rx="2" fill="#334155" />
+  <polygon points="94,102 106,102 106,145 94,145" fill="#64748b" />
+  
+  <!-- Classical Pediment / Roof -->
+  <polygon points="25,75 100,30 175,75" fill="url(#bank_roof)" stroke="#065f46" stroke-width="2" filter="url(#b_shadow)" />
+  
+  <!-- Golden Coin Emblem -->
+  <circle cx="100" cy="56" r="13" fill="#facc15" stroke="#ca8a04" stroke-width="2" />
+  <text x="100" y="62" text-anchor="middle" fill="#713f12" font-size="16" font-weight="900" font-family="sans-serif">€</text>
+  
+  <!-- Trees on side -->
+  <circle cx="30" cy="140" r="14" fill="#34d399" />
+  <circle cx="170" cy="140" r="14" fill="#34d399" />
+</svg>

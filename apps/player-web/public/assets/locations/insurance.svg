@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="ins_sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#fffbeb" />
+      <stop offset="100%" stopColor="#fef3c7" />
+    </linearGradient>
+    <linearGradient id="shield_gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#facc15" />
+      <stop offset="100%" stopColor="#d97706" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="200" height="200" rx="30" fill="url(#ins_sky)" />
+  <ellipse cx="100" cy="165" rx="80" ry="25" fill="#fde68a" />
+  
+  <!-- Office House -->
+  <rect x="45" y="80" width="110" height="75" rx="4" fill="#ffffff" stroke="#d97706" stroke-width="2" />
+  <polygon points="30,85 100,35 170,85" fill="#f59e0b" stroke="#b45309" stroke-width="2" />
+  
+  <!-- Giant Protective Shield in Center -->
+  <g transform="translate(70, 70)">
+    <path d="M30,0 L56,12 C56,40 30,58 30,62 C30,58 4,40 4,12 Z" fill="url(#shield_gold)" stroke="#92400e" stroke-width="2" />
+    <!-- Checkmark inside Shield -->
+    <path d="M18,28 L26,36 L42,18" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <!-- Small Umbrella Symbol on Roof -->
+  <path d="M90,30 Q100,18 110,30 Z" fill="#ef4444" />
+  <path d="M100,30 L100,40 Q97,44 94,40" fill="none" stroke="#991b1b" stroke-width="2" />
+</svg>

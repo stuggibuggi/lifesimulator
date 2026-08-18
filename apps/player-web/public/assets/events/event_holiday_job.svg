@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <defs>
+    <linearGradient id="evt_job_bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#ecfdf5" />
+      <stop offset="100%" stopColor="#d1fae5" />
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="24" fill="url(#evt_job_bg)" />
+  
+  <!-- Money Pouch / First Salary -->
+  <g transform="translate(45, 35)">
+    <!-- Pouch Body -->
+    <ellipse cx="35" cy="55" rx="35" ry="32" fill="#10b981" stroke="#047857" stroke-width="2.5" />
+    <polygon points="20,25 50,25 45,10 25,10" fill="#047857" />
+    <!-- Tie Ribbon -->
+    <rect x="25" y="22" width="20" height="6" rx="2" fill="#facc15" />
+    <!-- Euro Symbol -->
+    <circle cx="35" cy="55" r="14" fill="#facc15" stroke="#ca8a04" stroke-width="2" />
+    <text x="35" y="62" text-anchor="middle" fill="#713f12" font-size="18" font-weight="900" font-family="sans-serif">€</text>
+  </g>
+  
+  <!-- Sparkles -->
+  <circle cx="30" cy="30" r="4" fill="#facc15" />
+  <circle cx="130" cy="40" r="5" fill="#facc15" />
+</svg>

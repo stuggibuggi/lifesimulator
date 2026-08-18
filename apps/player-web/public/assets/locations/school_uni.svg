@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="uni_sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#f0f9ff" />
+      <stop offset="100%" stopColor="#e0f2fe" />
+    </linearGradient>
+    <linearGradient id="uni_roof" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#0ea5e9" />
+      <stop offset="100%" stopColor="#0369a1" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="200" height="200" rx="30" fill="url(#uni_sky)" />
+  <ellipse cx="100" cy="165" rx="80" ry="25" fill="#bae6fd" />
+  
+  <!-- Campus Main Building -->
+  <rect x="35" y="80" width="130" height="75" rx="4" fill="#ffffff" stroke="#94a3b8" stroke-width="2" />
+  
+  <!-- Clock Tower Center -->
+  <rect x="80" y="35" width="40" height="50" rx="3" fill="#f8fafc" stroke="#64748b" stroke-width="2" />
+  <polygon points="75,38 100,10 125,38" fill="url(#uni_roof)" stroke="#0c4a6e" stroke-width="2" />
+  
+  <!-- Clock Face -->
+  <circle cx="100" cy="55" r="10" fill="#fef08a" stroke="#475569" stroke-width="2" />
+  <line x1="100" y1="55" x2="100" y2="49" stroke="#1e293b" stroke-width="2" />
+  <line x1="100" y1="55" x2="104" y2="55" stroke="#1e293b" stroke-width="1.5" />
+  
+  <!-- Side Roofs -->
+  <polygon points="30,85 75,55 85,85" fill="url(#uni_roof)" />
+  <polygon points="115,85 125,55 170,85" fill="url(#uni_roof)" />
+  
+  <!-- Windows Matrix -->
+  <rect x="45" y="95" width="14" height="20" rx="2" fill="#7dd3fc" />
+  <rect x="65" y="95" width="14" height="20" rx="2" fill="#7dd3fc" />
+  <rect x="121" y="95" width="14" height="20" rx="2" fill="#7dd3fc" />
+  <rect x="141" y="95" width="14" height="20" rx="2" fill="#7dd3fc" />
+  
+  <!-- Entrance Arch -->
+  <path d="M90,155 L90,120 Q100,110 110,120 L110,155 Z" fill="#0f172a" />
+  
+  <!-- Graduation Cap Icon on Gate -->
+  <polygon points="100,118 108,122 100,126 92,122" fill="#facc15" />
+</svg>

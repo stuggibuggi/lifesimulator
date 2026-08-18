@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "rootDir": "../../",
+    "paths": {
+      "@goal/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@goal/simulation-engine": ["../../packages/simulation-engine/src/index.ts"],
+      "@goal/game-content": ["../../packages/game-content/src/index.ts"],
+      "@goal/scoring-engine": ["../../packages/scoring-engine/src/index.ts"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../../packages/*/src/**/*"
+  ]
+}

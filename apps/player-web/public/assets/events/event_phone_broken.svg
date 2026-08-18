@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="100%" height="100%">
+  <defs>
+    <linearGradient id="evt_bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#fee2e2" />
+      <stop offset="100%" stopColor="#fecaca" />
+    </linearGradient>
+  </defs>
+  <rect width="160" height="160" rx="24" fill="url(#evt_bg1)" />
+  
+  <!-- Smartphone with Cracked Screen -->
+  <g transform="translate(45, 25)">
+    <rect x="0" y="0" width="70" height="110" rx="12" fill="#1e293b" stroke="#64748b" stroke-width="3" />
+    <rect x="5" y="10" width="60" height="90" rx="6" fill="#38bdf8" />
+    <!-- Cracks -->
+    <path d="M15,20 L35,45 L25,70 L50,90" stroke="#ffffff" stroke-width="2.5" fill="none" />
+    <path d="M35,45 L55,40 L60,65" stroke="#ffffff" stroke-width="2" fill="none" />
+    <!-- Home Button -->
+    <circle cx="35" cy="104" r="3" fill="#64748b" />
+  </g>
+  
+  <!-- Alert Bubble -->
+  <circle cx="125" cy="40" r="18" fill="#ef4444" stroke="#ffffff" stroke-width="3" />
+  <text x="125" y="47" text-anchor="middle" fill="#ffffff" font-size="20" font-weight="900" font-family="sans-serif">!</text>
+</svg>

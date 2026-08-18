@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="100%" height="100%">
+  <defs>
+    <linearGradient id="market_sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#fff1f2" />
+      <stop offset="100%" stopColor="#ffe4e6" />
+    </linearGradient>
+  </defs>
+  
+  <rect width="200" height="200" rx="30" fill="url(#market_sky)" />
+  <ellipse cx="100" cy="165" rx="80" ry="25" fill="#fbcfe8" />
+  
+  <!-- Market Stall Base -->
+  <rect x="45" y="95" width="110" height="60" rx="4" fill="#ffffff" stroke="#e11d48" stroke-width="2" />
+  
+  <!-- Striped Awning -->
+  <polygon points="30,95 40,55 160,55 170,95" fill="#f43f5e" />
+  <polygon points="50,95 56,55 74,55 68,95" fill="#ffffff" />
+  <polygon points="86,95 92,55 108,55 104,95" fill="#ffffff" />
+  <polygon points="122,95 128,55 144,55 140,95" fill="#ffffff" />
+  
+  <!-- Market Goods & Shopping Cart -->
+  <circle cx="70" cy="120" r="10" fill="#f97316" />
+  <circle cx="90" cy="122" r="8" fill="#eab308" />
+  <circle cx="106" cy="118" r="10" fill="#22c55e" />
+  
+  <!-- Cute Compact Red Car in Front -->
+  <g transform="translate(110, 135) scale(0.65)">
+    <polygon points="10,10 30,0 60,10 50,25 0,25" fill="#ef4444" />
+    <circle cx="15" cy="25" r="7" fill="#1e293b" />
+    <circle cx="45" cy="25" r="7" fill="#1e293b" />
+  </g>
+</svg>
