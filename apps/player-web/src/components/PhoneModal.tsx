@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { sound } from '../audio/soundSynth';
+import { FINANCIAL_LEARNING_CARDS } from '@goal/game-content';
+import { getLearningCardAchievementId, LEARNING_CARD_REWARD_POINTS } from '@goal/simulation-engine';
 import {
   X,
   MessageSquare,
@@ -245,8 +247,16 @@ const ADVISORS: AdvisorContact[] = [
 ];
 
 export const PhoneModal: React.FC = () => {
-  const { gameState, closeModal } = useGameStore();
-  const [activeTab, setActiveTab] = useState<'MESSENGER' | 'PHONE' | 'NOTIFICATIONS'>('MESSENGER');
+  const {
+    gameState,
+    pendingPhoneTipCardId,
+    closeModal,
+    handleCompleteLearningCard,
+    clearPendingPhoneTip,
+  } = useGameStore();
+  const [activeTab, setActiveTab] = useState<'MESSENGER' | 'PHONE' | 'NOTIFICATIONS'>(
+    pendingPhoneTipCardId ? 'NOTIFICATIONS' : 'MESSENGER'
+  );
 
   // Messenger State
   const [chats, setChats] = useState<ChatContact[]>(INITIAL_CHATS);
@@ -257,9 +267,21 @@ export const PhoneModal: React.FC = () => {
   const [callState, setCallState] = useState<'RINGING' | 'CONNECTED' | 'ENDED' | null>(null);
   const [activeFaqAnswer, setActiveFaqAnswer] = useState<{ question: string; answer: string; learningTip: string } | null>(null);
 
+  useEffect(() => {
+    if (pendingPhoneTipCardId) {
+      setActiveTab('NOTIFICATIONS');
+    }
+  }, [pendingPhoneTipCardId]);
+
   if (!gameState) return null;
 
   const currentChat = chats.find((c) => c.id === selectedChatId) || chats[0];
+  const pendingLearningCard = pendingPhoneTipCardId
+    ? FINANCIAL_LEARNING_CARDS.find((card) => card.id === pendingPhoneTipCardId)
+    : undefined;
+  const hasLearnedPendingCard = pendingLearningCard
+    ? gameState.unlockedAchievements.includes(getLearningCardAchievementId(pendingLearningCard.id))
+    : false;
 
   const handleSendQuickReply = (reply: { text: string; response: string; knowledgeGain?: number; happinessGain?: number }) => {
     sound.playPop();
@@ -550,6 +572,44 @@ export const PhoneModal: React.FC = () => {
               </div>
 
               <div className="space-y-2.5 overflow-y-auto custom-scrollbar flex-1">
+                {pendingLearningCard && (
+                  <div className="p-3 bg-skyline-50 rounded-2xl border border-skyline-200 text-xs shadow-2xs">
+                    <div className="flex items-center justify-between text-[10px] text-skyline-600 font-bold mb-1">
+                      <span>GOAL Lernkarte</span>
+                      <span>Neu</span>
+                    </div>
+                    <p className="text-gray-900 font-black mb-1">
+                      Tipp im Handy: {pendingLearningCard.title}
+                    </p>
+                    <p className="text-gray-700 font-medium leading-relaxed mb-3">
+                      {pendingLearningCard.shortSummary}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCompleteLearningCard(pendingLearningCard.id)}
+                        disabled={hasLearnedPendingCard}
+                        className={`px-3 py-1.5 rounded-xl font-extrabold transition-all ${
+                          hasLearnedPendingCard
+                            ? 'bg-matcha-100 text-matcha-800 cursor-default'
+                            : 'bg-matcha-600 hover:bg-matcha-700 text-white cursor-pointer'
+                        }`}
+                      >
+                        {hasLearnedPendingCard
+                          ? 'Gelernt ✓'
+                          : `Gelernt (+${LEARNING_CARD_REWARD_POINTS})`}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={clearPendingPhoneTip}
+                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-gray-50 border border-skyline-200 text-skyline-800 font-extrabold cursor-pointer"
+                      >
+                        Später
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="p-3 bg-white rounded-2xl border border-gray-200 text-xs shadow-2xs">
                   <div className="flex items-center justify-between text-[10px] text-gray-400 font-bold mb-1">
                     <span>Stadt-Sparkasse</span>
@@ -613,8 +673,13 @@ export const PhoneModal: React.FC = () => {
                 activeTab === 'NOTIFICATIONS' ? 'text-matcha-700' : 'text-gray-400 hover:text-gray-600'
               }`}
             >
-              <Bell className="w-5 h-5" />
-              <span>SMS</span>
+              <span className="relative">
+                <Bell className="w-5 h-5" />
+                {pendingPhoneTipCardId && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500" />
+                )}
+              </span>
+              <span>{pendingPhoneTipCardId ? 'SMS • Tipp' : 'SMS'}</span>
             </button>
           </div>
         </div>

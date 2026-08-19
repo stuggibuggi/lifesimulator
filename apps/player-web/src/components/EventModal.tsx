@@ -144,6 +144,18 @@ export const EventModal: React.FC = () => {
                 <span className="leading-relaxed">{eventChoiceFeedback.learningTip}</span>
               </div>
             </div>
+
+            {eventChoiceFeedback.phoneTipCardId && (
+              <div className="bg-skyline-50 p-4 rounded-2xl border border-skyline-200 text-xs text-skyline-950 flex items-start gap-2.5">
+                <Smartphone className="w-4 h-4 text-skyline-700 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-extrabold block">Tipp im Handy:</span>
+                  <span className="leading-relaxed">
+                    Zu diesem Ereignis wartet eine passende Lernkarte in deinen SMS.
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="p-4 md:p-6 border-t border-gray-100 bg-white flex justify-end shrink-0">

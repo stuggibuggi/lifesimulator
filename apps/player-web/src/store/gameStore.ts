@@ -46,6 +46,7 @@ import {
   CAREER_OPTIONS,
   EducationCareerOption,
   EDUCATIONAL_SCENARIOS,
+  getLearningCardForLifeEvent,
   JOB_SWITCH_OPTIONS,
 } from '@goal/game-content';
 import { sound } from '../audio/soundSynth';
@@ -87,6 +88,7 @@ export interface EventChoiceFeedback {
   choiceLabel: string;
   learningTip: string;
   financialImpact: number;
+  phoneTipCardId?: string;
 }
 
 interface GameStoreState {
@@ -98,6 +100,7 @@ interface GameStoreState {
   selectedScenario: EducationalScenario | null;
   prng: SeededRandom | null;
   eventChoiceFeedback: EventChoiceFeedback | null;
+  pendingPhoneTipCardId: string | null;
   careerActionFeedback: string | null;
   cloudSaveStatus: CloudSaveStatus;
   cloudSaveMessage?: string;
@@ -137,6 +140,7 @@ interface GameStoreState {
   handleStartFurtherTraining: () => void;
   handleAbortEducationPath: () => void;
   handleCompleteLearningCard: (cardId: string) => void;
+  clearPendingPhoneTip: () => void;
 
   setActiveModal: (modal: ActiveModal) => void;
   closeModal: () => void;
@@ -174,6 +178,7 @@ function createEventChoiceFeedback(
     choiceLabel: choice.label,
     learningTip: choice.learningTip,
     financialImpact: appliedChoice?.financialImpact ?? choice.costImmediate,
+    phoneTipCardId: getLearningCardForLifeEvent(eventId)?.id,
   };
 }
 
@@ -306,6 +311,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   selectedScenario: null,
   prng: null,
   eventChoiceFeedback: null,
+  pendingPhoneTipCardId: null,
   careerActionFeedback: null,
   cloudSaveStatus: 'idle',
   cloudSaveMessage: undefined,
@@ -325,6 +331,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       selectedScenario: EDUCATIONAL_SCENARIOS[0],
       activeModal: null,
       eventChoiceFeedback: null,
+      pendingPhoneTipCardId: null,
       careerActionFeedback: null,
       cloudSaveStatus: 'idle',
       cloudSaveMessage: undefined,
@@ -460,6 +467,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       gamePhase: 'PLAYING',
       activeModal: null,
       eventChoiceFeedback: null,
+      pendingPhoneTipCardId: null,
       careerActionFeedback: null,
       cloudSaveStatus: 'idle',
       cloudSaveMessage: getStudentSession() ? 'Cloud-Save bereit' : undefined,
@@ -524,6 +532,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       gamePhase: 'PLAYING',
       activeModal: null,
       eventChoiceFeedback: null,
+      pendingPhoneTipCardId: null,
       careerActionFeedback: null,
       cloudSaveStatus: 'idle',
       cloudSaveMessage: undefined,
@@ -638,7 +647,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       confetti({ particleCount: 80, spread: 60 });
     }
 
-    set({ gameState: updatedState, eventChoiceFeedback });
+    set({
+      gameState: updatedState,
+      eventChoiceFeedback,
+      pendingPhoneTipCardId: eventChoiceFeedback.phoneTipCardId ?? null,
+    });
     persistLocal(updatedState);
     void maybeCloudSave(updatedState, true);
   },
@@ -871,9 +884,18 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }
 
     sound.playFanfare();
-    set({ gameState: updated });
+    set({
+      gameState: updated,
+      pendingPhoneTipCardId:
+        get().pendingPhoneTipCardId === cardId ? null : get().pendingPhoneTipCardId,
+    });
     persistLocal(updated);
     void maybeCloudSave(updated, true);
+  },
+
+  clearPendingPhoneTip: () => {
+    sound.playPop();
+    set({ pendingPhoneTipCardId: null });
   },
 
   setActiveModal: (modal) => {
@@ -909,6 +931,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         gamePhase: sanitized.isGameOver ? 'EVALUATION' : 'PLAYING',
         activeModal: null,
         eventChoiceFeedback: null,
+        pendingPhoneTipCardId: null,
         careerActionFeedback: null,
         cloudSaveStatus: 'idle',
         cloudSaveMessage: getStudentSession() ? 'Cloud-Save bereit' : undefined,
@@ -960,6 +983,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       selectedScenario: null,
       prng: null,
       eventChoiceFeedback: null,
+      pendingPhoneTipCardId: null,
       careerActionFeedback: null,
       cloudSaveStatus: 'idle',
       cloudSaveMessage: undefined,
