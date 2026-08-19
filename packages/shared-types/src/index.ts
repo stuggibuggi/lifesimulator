@@ -87,6 +87,9 @@ export interface CareerState {
   timeCommitmentHoursWeekly: number;
   careerAdvancementLevel: number; // 0..5
   isCompleted: boolean;
+  fullTimeGrossSalary: number;
+  monthsSinceLastRaiseAttempt: number;
+  monthsSinceLastTraining: number;
 }
 
 export interface BankAccount {

@@ -127,6 +127,9 @@ export function createInitialGameState(
       timeCommitmentHoursWeekly: 35,
       careerAdvancementLevel: 0,
       isCompleted: false,
+      fullTimeGrossSalary: 0,
+      monthsSinceLastRaiseAttempt: 12,
+      monthsSinceLastTraining: 24,
     },
 
     activeMobility: 'PUBLIC_TRANSIT',

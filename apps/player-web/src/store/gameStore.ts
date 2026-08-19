@@ -181,6 +181,16 @@ function sanitizeGameState(state: any): GameState {
   return {
     ...state,
     version: '0.5.0',
+    career: {
+      ...state.career,
+      fullTimeGrossSalary:
+        state.career?.fullTimeGrossSalary ??
+        (state.career?.timeCommitmentHoursWeekly === 30
+          ? Math.round((state.career?.monthlySalaryGross || 0) * 40 / 30)
+          : state.career?.monthlySalaryGross || 0),
+      monthsSinceLastRaiseAttempt: state.career?.monthsSinceLastRaiseAttempt ?? 12,
+      monthsSinceLastTraining: state.career?.monthsSinceLastTraining ?? 24,
+    },
     activeMobility: state.activeMobility || 'PUBLIC_TRANSIT',
     housing: state.housing || {
       type: 'PARENTS',
@@ -340,6 +350,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             timeCommitmentHoursWeekly: ausbildung.timeCommitmentHoursWeekly,
             careerAdvancementLevel: 0,
             isCompleted: false,
+            fullTimeGrossSalary: ausbildung.monthlySalaryGross,
+            monthsSinceLastRaiseAttempt: 12,
+            monthsSinceLastTraining: 24,
           },
           ausbildung.rentEstimated,
           ausbildung.mobilityEstimated
@@ -364,6 +377,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           timeCommitmentHoursWeekly: job.timeCommitmentHoursWeekly,
           careerAdvancementLevel: 1,
           isCompleted: true,
+          fullTimeGrossSalary: job.startingGrossAfterGraduation || job.monthlySalaryGross,
+          monthsSinceLastRaiseAttempt: 12,
+          monthsSinceLastTraining: 24,
         },
         470,
         49
@@ -430,6 +446,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         timeCommitmentHoursWeekly: option.timeCommitmentHoursWeekly,
         careerAdvancementLevel: 0,
         isCompleted: false,
+        fullTimeGrossSalary: option.monthlySalaryGross,
+        monthsSinceLastRaiseAttempt: 12,
+        monthsSinceLastTraining: 24,
       },
       option.rentEstimated,
       option.mobilityEstimated

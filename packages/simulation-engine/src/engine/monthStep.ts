@@ -192,12 +192,21 @@ export function stepSimulationMonth(
 
   // 13. Karriere & Gehaltsentwicklung
   let updatedCareer = { ...currentState.career };
+  updatedCareer.monthsSinceLastRaiseAttempt += 1;
+  updatedCareer.monthsSinceLastTraining += 1;
+
+  let careerSalaryChanged = false;
   if (currentState.currentMonth === 12) {
     updatedCareer.currentYear += 1;
 
     if (updatedCareer.isCompleted && updatedCareer.type === 'ANGESTELLTER') {
-      updatedCareer.monthlySalaryGross = Math.round(updatedCareer.monthlySalaryGross * 1.025);
-      updatedCareer.monthlySalaryNet = updatedTax.netMonthly;
+      updatedCareer.fullTimeGrossSalary = Math.round(
+        updatedCareer.fullTimeGrossSalary * 1.025
+      );
+      updatedCareer.monthlySalaryGross = Math.round(
+        (updatedCareer.fullTimeGrossSalary * updatedCareer.timeCommitmentHoursWeekly) / 40
+      );
+      careerSalaryChanged = true;
     }
 
     if (
@@ -208,13 +217,37 @@ export function stepSimulationMonth(
       if (updatedCareer.type === 'AUSBILDUNG') {
         updatedCareer.type = 'ANGESTELLTER';
         updatedCareer.title = `Fachkraft (${updatedCareer.branch})`;
-        updatedCareer.monthlySalaryGross = Math.max(3000, Math.round(updatedCareer.monthlySalaryGross * 2.2));
+        updatedCareer.monthlySalaryGross = Math.max(
+          3000,
+          Math.round(updatedCareer.monthlySalaryGross * 2.2)
+        );
+        updatedCareer.fullTimeGrossSalary = updatedCareer.monthlySalaryGross;
+        updatedCareer.timeCommitmentHoursWeekly = 40;
+        careerSalaryChanged = true;
       } else if (updatedCareer.type === 'STUDIUM') {
         updatedCareer.type = 'ANGESTELLTER';
         updatedCareer.title = `Bachelor / Junior (${updatedCareer.branch})`;
-        updatedCareer.monthlySalaryGross = Math.max(3800, Math.round(updatedCareer.monthlySalaryGross * 2.8));
+        updatedCareer.monthlySalaryGross = Math.max(
+          3800,
+          Math.round(updatedCareer.monthlySalaryGross * 2.8)
+        );
+        updatedCareer.fullTimeGrossSalary = updatedCareer.monthlySalaryGross;
+        updatedCareer.timeCommitmentHoursWeekly = 40;
+        careerSalaryChanged = true;
       }
     }
+  }
+
+  let finalTax = updatedTax;
+  if (careerSalaryChanged) {
+    finalTax = calculateGermanPayroll(
+      updatedCareer.monthlySalaryGross,
+      currentState.tax?.taxClass || 'I',
+      currentState.tax?.hasChurchTax || false,
+      currentState.family.childrenCount,
+      currentState.currentAge
+    );
+    updatedCareer.monthlySalaryNet = finalTax.netMonthly;
   }
 
   // 14. Elternzeit fortschreiben
@@ -392,7 +425,7 @@ export function stepSimulationMonth(
     career: updatedCareer,
     family: updatedFamily,
     bausparContracts: updatedBausparer,
-    tax: updatedTax,
+    tax: finalTax,
     pension: updatedPension,
     insurances: updatedInsurances,
     bankAccount: {
