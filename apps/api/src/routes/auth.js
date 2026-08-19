@@ -317,4 +317,29 @@ router.get('/teacher/me', requireTeacher, async (req, res) => {
   }
 });
 
+router.delete('/teacher/me', requireTeacher, async (req, res) => {
+  try {
+    const password = String(req.body.password || '');
+    if (!password) {
+      return res.status(400).json({ error: 'Passwort erforderlich.' });
+    }
+
+    const rows = await query('SELECT id, password_hash FROM teachers WHERE id = ? LIMIT 1', [
+      req.teacher.teacherId,
+    ]);
+    if (!rows.length) return res.status(404).json({ error: 'Nicht gefunden.' });
+
+    const ok = await bcrypt.compare(password, rows[0].password_hash);
+    if (!ok) {
+      return res.status(401).json({ error: 'Passwort stimmt nicht.' });
+    }
+
+    await query('DELETE FROM teachers WHERE id = ?', [req.teacher.teacherId]);
+    res.status(204).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Konto konnte nicht gelöscht werden.' });
+  }
+});
+
 export default router;

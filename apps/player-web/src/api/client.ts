@@ -196,6 +196,18 @@ export async function teacherResetPassword(token: string, password: string) {
   });
 }
 
+export async function deleteTeacherMe(password: string) {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+  await apiFetch('/api/auth/teacher/me', {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ password }),
+  });
+  setTeacherToken(null);
+  setActiveClassroomId(null);
+}
+
 export async function createClassroom(title: string, scenarioId?: string, expiresAt?: string | null) {
   const token = getTeacherToken();
   if (!token) throw new Error('Nicht als Lehrer angemeldet.');

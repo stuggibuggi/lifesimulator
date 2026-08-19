@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { ModalShell } from './ModalShell';
 import {
   createClassroom,
+  deleteTeacherMe,
   joinClassroom,
   loadCloudRun,
   setStudentSession,
@@ -90,6 +91,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
   const [mailSent, setMailSent] = useState(true);
   const [resetToken, setResetToken] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
 
   useEffect(() => {
     if (mode !== 'TEACHER') return;
@@ -260,6 +262,29 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
     setCreatedScenarioName(null);
     setTeacherReady(false);
     setTeacherView('AUTH');
+  };
+
+  const handleDeleteTeacherAccount = async () => {
+    const ok = window.confirm(
+      'Lehrerkonto wirklich löschen?\n\nAlle Klassenräume, Schüler-Zugänge, Spielstände und Zertifikate werden dauerhaft entfernt.'
+    );
+    if (!ok) return;
+
+    setBusy(true);
+    setError(null);
+    try {
+      await deleteTeacherMe(deletePassword);
+      setDeletePassword('');
+      setCreatedCode(null);
+      setCreatedScenarioName(null);
+      setTeacherReady(false);
+      setTeacherView('AUTH');
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Konto löschen fehlgeschlagen.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -621,6 +646,32 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
             <button type="button" onClick={handleLogout} className="text-xs text-gray-500 underline">
               Abmelden
             </button>
+            <div className="mt-4 p-3 rounded-2xl bg-red-50 border border-red-200 space-y-2">
+              <div>
+                <div className="text-[10px] font-black uppercase text-red-700">
+                  Konto löschen
+                </div>
+                <p className="text-[11px] font-semibold text-red-800">
+                  Entfernt dein Lehrerkonto inklusive Klassenräumen, Spielständen und Zertifikaten.
+                </p>
+              </div>
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border-2 border-red-200 bg-white"
+                placeholder="Passwort zur Bestätigung"
+                minLength={1}
+              />
+              <button
+                type="button"
+                onClick={() => void handleDeleteTeacherAccount()}
+                disabled={busy || !deletePassword}
+                className="w-full py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs disabled:opacity-50"
+              >
+                Konto dauerhaft löschen
+              </button>
+            </div>
           </div>
         )}
       </div>
