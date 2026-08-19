@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { EDUCATIONAL_SCENARIOS } from '@goal/game-content';
-import { normalizeClassroomCharacterName, resolveClassroomJoinNextStep } from './ClassroomAuthModal.helpers';
+import {
+  normalizeClassroomCharacterName,
+  resolveClassroomJoinNextStep,
+  toClassroomExpiresAt,
+} from './ClassroomAuthModal.helpers';
 
 describe('ClassroomAuthModal join flow helpers', () => {
   it('keeps cloud saves ahead of fixed classroom scenarios', () => {
@@ -32,5 +36,10 @@ describe('ClassroomAuthModal join flow helpers', () => {
     expect(normalizeClassroomCharacterName('Fuchs42', '  Mia  ')).toBe('Mia');
     expect(normalizeClassroomCharacterName('Fuchs42', '   ')).toBe('Fuchs42');
     expect(normalizeClassroomCharacterName('', '')).toBe('Alex');
+  });
+
+  it('converts expiry date inputs to end-of-day ISO timestamps', () => {
+    expect(toClassroomExpiresAt('2026-11-17')).toBe('2026-11-17T23:59:59.000Z');
+    expect(toClassroomExpiresAt('')).toBeNull();
   });
 });

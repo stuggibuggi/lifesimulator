@@ -88,6 +88,7 @@ export type ClassroomSummaryResponse = {
     roomCode: string;
     title: string;
     scenarioId?: string | null;
+    expiresAt?: string | null;
   };
   summary: {
     memberCount: number;
@@ -195,13 +196,13 @@ export async function teacherResetPassword(token: string, password: string) {
   });
 }
 
-export async function createClassroom(title: string, scenarioId?: string) {
+export async function createClassroom(title: string, scenarioId?: string, expiresAt?: string | null) {
   const token = getTeacherToken();
   if (!token) throw new Error('Nicht als Lehrer angemeldet.');
   const data = await apiFetch('/api/classrooms', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ title, scenarioId }),
+    body: JSON.stringify({ title, scenarioId, expiresAt }),
   });
   if (data.classroom?.id) setActiveClassroomId(data.classroom.id);
   return data;

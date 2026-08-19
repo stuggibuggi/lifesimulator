@@ -23,6 +23,12 @@ export function normalizeClassroomCharacterName(alias: string, characterName: st
   return aliasName || 'Alex';
 }
 
+export function toClassroomExpiresAt(dateValue: string): string | null {
+  const normalized = dateValue.trim();
+  if (!normalized) return null;
+  return new Date(`${normalized}T23:59:59.000Z`).toISOString();
+}
+
 export function resolveClassroomJoinNextStep({
   hasCloudGameState,
   scenarioId,

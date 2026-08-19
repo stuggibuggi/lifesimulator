@@ -23,6 +23,7 @@ import {
   getEducationalScenarioTitle,
   normalizeClassroomCharacterName,
   resolveClassroomJoinNextStep,
+  toClassroomExpiresAt,
 } from './ClassroomAuthModal.helpers';
 
 type Mode = 'JOIN' | 'TEACHER';
@@ -56,6 +57,12 @@ function makeClassroomJoinUrl(roomCode: string): string {
   return `https://vorsorgenavigator.stoffner.de/?join=${encodeURIComponent(roomCode)}`;
 }
 
+function getDefaultExpiryDate(): string {
+  const date = new Date();
+  date.setDate(date.getDate() + 90);
+  return date.toISOString().slice(0, 10);
+}
+
 export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, onClose }) => {
   const { importSaveState, setActiveModal, startScenarioGame } = useGameStore();
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +82,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
   const [createdScenarioName, setCreatedScenarioName] = useState<string | null>(null);
   const [classTitle, setClassTitle] = useState('Klasse 9b');
   const [selectedScenarioId, setSelectedScenarioId] = useState(EDUCATIONAL_SCENARIOS[0]?.id ?? '');
+  const [expiresDate, setExpiresDate] = useState(getDefaultExpiryDate);
   const [teacherReady, setTeacherReady] = useState(Boolean(getTeacherToken()));
   const [teacherView, setTeacherView] = useState<TeacherView>(
     getTeacherToken() ? 'LOGGED_IN' : 'AUTH'
@@ -230,7 +238,11 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
     setBusy(true);
     setError(null);
     try {
-      const data = await createClassroom(classTitle, selectedScenarioId || undefined);
+      const data = await createClassroom(
+        classTitle,
+        selectedScenarioId || undefined,
+        toClassroomExpiresAt(expiresDate)
+      );
       setCreatedCode(data.classroom.roomCode);
       setCreatedScenarioName(getEducationalScenarioTitle(data.classroom.scenarioId));
       if (data.classroom?.id) setActiveClassroomId(data.classroom.id);
@@ -528,6 +540,20 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
               className="w-full px-3 py-2 rounded-xl border-2 border-gray-200"
               placeholder="Klassentitel"
             />
+            <label className="block">
+              <span className="text-[10px] font-black uppercase text-gray-500">
+                Gültig bis
+              </span>
+              <input
+                type="date"
+                value={expiresDate}
+                onChange={(e) => setExpiresDate(e.target.value)}
+                className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-gray-200"
+              />
+              <span className="mt-1 block text-[11px] font-semibold text-gray-500">
+                Standard: 90 Tage. Nach Ablauf können keine Schüler mehr beitreten.
+              </span>
+            </label>
             <label className="block">
               <span className="text-[10px] font-black uppercase text-gray-500">
                 Festes Unterrichtsszenario

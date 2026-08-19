@@ -22,6 +22,7 @@ import {
   formatClassroomMemberAge,
   formatClassroomMemberScore,
   formatClassroomMemberStatus,
+  getClassroomExpiryNotice,
 } from './ClassroomModal.helpers';
 import type { ClassroomMemberRow } from './ClassroomModal.helpers';
 import { CertificatePanel } from './CertificatePanel';
@@ -31,6 +32,7 @@ type ClassroomListItem = {
   roomCode: string;
   title: string;
   scenarioId?: string | null;
+  expiresAt?: string | null;
   memberCount?: number;
 };
 
@@ -75,7 +77,9 @@ export const ClassroomModal: React.FC = () => {
       setRoomCode(data.classroom.roomCode);
       setClassrooms((rooms) =>
         rooms.map((room) =>
-          room.id === classroomId ? { ...room, scenarioId: data.classroom.scenarioId } : room
+          room.id === classroomId
+            ? { ...room, scenarioId: data.classroom.scenarioId, expiresAt: data.classroom.expiresAt }
+            : room
         )
       );
       setActiveClassroomId(classroomId);
@@ -149,6 +153,13 @@ export const ClassroomModal: React.FC = () => {
   const scenarioName = getEducationalScenarioTitle(
     selectedClassroom?.scenarioId ?? studentSession?.scenarioId
   );
+  const expiryNotice = getClassroomExpiryNotice(selectedClassroom?.expiresAt);
+  const expiryClass =
+    expiryNotice?.tone === 'expired'
+      ? 'bg-red-50 text-red-700 border-red-200'
+      : expiryNotice?.tone === 'warning'
+        ? 'bg-amber-50 text-amber-800 border-amber-200'
+        : 'bg-matcha-50 text-matcha-800 border-matcha-200';
 
   const handlePrint = () => {
     window.print();
@@ -314,8 +325,19 @@ export const ClassroomModal: React.FC = () => {
                     Szenario: {scenarioName}
                   </div>
                 )}
+                {expiryNotice && (
+                  <div
+                    className={`inline-flex mt-2 px-2.5 py-1 rounded-full border text-[11px] font-black ${expiryClass}`}
+                  >
+                    {expiryNotice.label}
+                  </div>
+                )}
                 <p className="text-xs text-gray-600 mt-1">
-                  {loading ? 'Lade Klassendaten…' : 'Schüler verbinden sich mit diesem Code.'}
+                  {expiryNotice?.tone === 'expired'
+                    ? 'Dieser Raum ist abgelaufen. Schüler können nicht mehr beitreten.'
+                    : loading
+                      ? 'Lade Klassendaten…'
+                      : 'Schüler verbinden sich mit diesem Code.'}
                 </p>
                 {joinUrl && (
                   <a

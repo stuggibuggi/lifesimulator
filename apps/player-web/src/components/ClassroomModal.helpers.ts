@@ -23,3 +23,34 @@ export function formatClassroomMemberScore(member: ClassroomMemberRow): string {
 export function canLoadClassroomCertificate(member: ClassroomMemberRow): boolean {
   return member.isGameOver && member.runId != null;
 }
+
+export type ClassroomExpiryNotice = {
+  label: string;
+  tone: 'normal' | 'warning' | 'expired';
+};
+
+function formatExpiryDate(date: Date): string {
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  return `${day}.${month}.${date.getUTCFullYear()}`;
+}
+
+export function getClassroomExpiryNotice(
+  expiresAt?: string | null,
+  now = new Date()
+): ClassroomExpiryNotice | null {
+  if (!expiresAt) return null;
+
+  const expiry = new Date(expiresAt);
+  if (Number.isNaN(expiry.getTime())) return null;
+
+  if (expiry.getTime() < now.getTime()) {
+    return { label: 'abgelaufen', tone: 'expired' };
+  }
+
+  const daysRemaining = (expiry.getTime() - now.getTime()) / (24 * 60 * 60 * 1000);
+  return {
+    label: `läuft ab am ${formatExpiryDate(expiry)}`,
+    tone: daysRemaining <= 7 ? 'warning' : 'normal',
+  };
+}
