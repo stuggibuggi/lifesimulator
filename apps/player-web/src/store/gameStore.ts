@@ -32,6 +32,11 @@ import {
   changeCareerPath,
   calculateGermanPayroll,
   SeededRandom,
+  requestSalaryRaise,
+  setEmploymentHours,
+  changeEmployedJob,
+  startFurtherTraining,
+  abortEducationPath,
 } from '@goal/simulation-engine';
 import { ALL_LIFE_EVENTS, ALL_LIFE_GOALS, CAREER_OPTIONS, EducationCareerOption, EDUCATIONAL_SCENARIOS } from '@goal/game-content';
 import { sound } from '../audio/soundSynth';
@@ -82,6 +87,7 @@ interface GameStoreState {
   selectedScenario: EducationalScenario | null;
   prng: SeededRandom | null;
   eventChoiceFeedback: EventChoiceFeedback | null;
+  careerActionFeedback: string | null;
 
   // Actions
   startNewGame: () => void;
@@ -111,6 +117,11 @@ interface GameStoreState {
   handleAdjustChildren: (newCount: number) => void;
   handleSetBavContribution: (monthlyContribution: number) => void;
   handleSetTaxParameters: (taxClass: TaxClass, hasChurchTax: boolean) => void;
+  handleRequestSalaryRaise: (mode: 'soft' | 'hard') => void;
+  handleChangeEmployedJob: (optionId: string) => void;
+  handleSetEmploymentHours: (hoursWeekly: 30 | 40) => void;
+  handleStartFurtherTraining: () => void;
+  handleAbortEducationPath: () => void;
 
   setActiveModal: (modal: ActiveModal) => void;
   closeModal: () => void;
@@ -258,6 +269,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   selectedScenario: null,
   prng: null,
   eventChoiceFeedback: null,
+  careerActionFeedback: null,
 
   startNewGame: () => {
     sound.playPop();
@@ -273,6 +285,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       selectedScenario: EDUCATIONAL_SCENARIOS[0],
       activeModal: null,
       eventChoiceFeedback: null,
+      careerActionFeedback: null,
     });
   },
 
@@ -401,6 +414,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       gamePhase: 'PLAYING',
       activeModal: null,
       eventChoiceFeedback: null,
+      careerActionFeedback: null,
     });
   },
 
@@ -460,6 +474,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       gamePhase: 'PLAYING',
       activeModal: null,
       eventChoiceFeedback: null,
+      careerActionFeedback: null,
     });
 
     try {
@@ -685,6 +700,101 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     set({ gameState: updated });
   },
 
+  handleRequestSalaryRaise: (mode) => {
+    const { gameState, prng } = get();
+    if (!gameState) return;
+
+    const rng = prng || new SeededRandom(gameState.seed);
+    const { state: updated, result } = requestSalaryRaise(gameState, mode, rng);
+
+    if (!result.ok || result.kind === 'hard_fail') {
+      sound.playWarning();
+    } else {
+      sound.playCoin();
+    }
+
+    set({
+      gameState: updated,
+      prng: rng,
+      careerActionFeedback: result.message,
+    });
+  },
+
+  handleChangeEmployedJob: (optionId) => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = changeEmployedJob(gameState, optionId);
+    if (updated === gameState) {
+      sound.playWarning();
+      set({ careerActionFeedback: 'Der Jobwechsel ist aktuell nicht möglich.' });
+      return;
+    }
+
+    sound.playCoin();
+    set({
+      gameState: updated,
+      careerActionFeedback: 'Du hast den Job erfolgreich gewechselt.',
+    });
+  },
+
+  handleSetEmploymentHours: (hoursWeekly) => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = setEmploymentHours(gameState, hoursWeekly);
+    if (updated === gameState) {
+      sound.playWarning();
+      set({ careerActionFeedback: 'Die Arbeitszeit kann aktuell nicht geändert werden.' });
+      return;
+    }
+
+    sound.playPop();
+    set({
+      gameState: updated,
+      careerActionFeedback:
+        hoursWeekly === 30
+          ? 'Du arbeitest jetzt in Teilzeit mit 30 Stunden pro Woche.'
+          : 'Du arbeitest jetzt wieder 40 Stunden pro Woche.',
+    });
+  },
+
+  handleStartFurtherTraining: () => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = startFurtherTraining(gameState);
+    if (updated === gameState) {
+      sound.playWarning();
+      set({ careerActionFeedback: 'Die Weiterbildung ist aktuell nicht möglich.' });
+      return;
+    }
+
+    sound.playCoin();
+    set({
+      gameState: updated,
+      careerActionFeedback: 'Weiterbildung gebucht: Dein Karrierelevel steigt.',
+    });
+  },
+
+  handleAbortEducationPath: () => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = abortEducationPath(gameState);
+    if (updated === gameState) {
+      sound.playWarning();
+      set({ careerActionFeedback: 'Der Abbruch ist für diesen Karriereweg nicht möglich.' });
+      return;
+    }
+
+    sound.playWarning();
+    set({
+      gameState: updated,
+      careerActionFeedback: 'Ausbildung/Studium abgebrochen: Du startest jetzt im Quereinstieg.',
+    });
+  },
+
   setActiveModal: (modal) => {
     sound.playPop();
     set({ activeModal: modal });
@@ -692,7 +802,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
   closeModal: () => {
     sound.playPop();
-    set({ activeModal: null });
+    set({ activeModal: null, careerActionFeedback: null });
   },
 
   saveToLocalStorage: () => {
@@ -718,6 +828,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         gamePhase: sanitized.isGameOver ? 'EVALUATION' : 'PLAYING',
         activeModal: null,
         eventChoiceFeedback: null,
+        careerActionFeedback: null,
       });
       return true;
     } catch {
@@ -743,6 +854,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         gamePhase: sanitized.isGameOver ? 'EVALUATION' : 'PLAYING',
         activeModal: null,
         eventChoiceFeedback: null,
+        careerActionFeedback: null,
       });
       return true;
     } catch {
@@ -761,6 +873,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       selectedScenario: null,
       prng: null,
       eventChoiceFeedback: null,
+      careerActionFeedback: null,
     });
   },
 }));
