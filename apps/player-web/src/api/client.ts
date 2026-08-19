@@ -233,6 +233,29 @@ export async function fetchClassroomSummary(classroomId: number): Promise<Classr
   });
 }
 
+export async function downloadClassroomCsv(classroomId: number) {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+
+  const res = await fetch(`${getApiBase()}/api/classrooms/${classroomId}/export.csv`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw Object.assign(new Error(data.error || `API-Fehler ${res.status}`), data);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `klasse-${classroomId}-export.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function fetchCertificate(
   classroomId: number,
   runId: number

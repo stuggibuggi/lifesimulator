@@ -10,6 +10,18 @@ const PIN_FAIL_LIMIT = 5;
 const PIN_COOLDOWN_MS = 60 * 1000;
 const failedPinAttempts = new Map();
 
+function csvCell(value) {
+  const normalized = value == null ? '' : String(value);
+  if (/[",\r\n]/.test(normalized)) {
+    return `"${normalized.replace(/"/g, '""')}"`;
+  }
+  return normalized;
+}
+
+function csvRow(values) {
+  return `${values.map(csvCell).join(',')}\r\n`;
+}
+
 function getClientIp(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
@@ -256,6 +268,56 @@ router.post('/join', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Beitritt fehlgeschlagen.' });
+  }
+});
+
+router.get('/:id/export.csv', requireTeacher, async (req, res) => {
+  try {
+    const classroomId = Number(req.params.id);
+    if (!Number.isInteger(classroomId) || classroomId <= 0) {
+      return res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    }
+
+    const rooms = await query(
+      'SELECT id, teacher_id, title FROM classrooms WHERE id = ? LIMIT 1',
+      [classroomId]
+    );
+    if (!rooms.length) return res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    if (Number(rooms[0].teacher_id) !== Number(req.teacher.teacherId)) {
+      return res.status(403).json({ error: 'Du kannst nur eigene Klassen exportieren.' });
+    }
+
+    const members = await query(
+      `SELECT m.alias, m.last_seen_at, g.current_age, g.is_game_over, g.overall_score, g.updated_at
+       FROM memberships m
+       LEFT JOIN game_runs g ON g.membership_id = m.id
+       WHERE m.classroom_id = ?
+       ORDER BY m.alias ASC`,
+      [classroomId]
+    );
+
+    const header = csvRow(['alias', 'age', 'isGameOver', 'overallScore', 'lastSeenAt', 'updatedAt']);
+    const rows = members
+      .map((m) =>
+        csvRow([
+          m.alias,
+          m.current_age,
+          Boolean(m.is_game_over),
+          m.overall_score,
+          m.last_seen_at,
+          m.updated_at,
+        ])
+      )
+      .join('');
+
+    res
+      .status(200)
+      .set('Content-Type', 'text/csv; charset=utf-8')
+      .set('Content-Disposition', `attachment; filename="classroom-${classroomId}-export.csv"`)
+      .send(`\uFEFF${header}${rows}`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'CSV-Export fehlgeschlagen.' });
   }
 });
 

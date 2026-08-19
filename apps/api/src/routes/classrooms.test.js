@@ -64,8 +64,18 @@ async function request(method, path, options = {}) {
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('text/csv')) {
+      const buffer = await res.arrayBuffer();
+      return {
+        status: res.status,
+        data: new TextDecoder().decode(buffer),
+        bytes: Array.from(new Uint8Array(buffer)),
+        headers: res.headers,
+      };
+    }
     const data = await res.json().catch(() => ({}));
-    return { status: res.status, data };
+    return { status: res.status, data, headers: res.headers };
   } finally {
     await new Promise((resolve, reject) => {
       server.close((err) => (err ? reject(err) : resolve()));
@@ -324,5 +334,60 @@ describe('DELETE /api/classrooms/:id', () => {
       42,
       7,
     ]);
+  });
+});
+
+describe('GET /api/classrooms/:id/export.csv', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('requires a teacher token', async () => {
+    const response = await request('GET', '/api/classrooms/42/export.csv');
+
+    expect(response.status).toBe(401);
+    expect(response.data.error).toContain('Lehrer-Login');
+    expect(query).not.toHaveBeenCalled();
+  });
+
+  it('exports owned classroom members as UTF-8 CSV', async () => {
+    query
+      .mockResolvedValueOnce([{ id: 42, teacher_id: 7, title: 'Klasse 9b' }])
+      .mockResolvedValueOnce([
+        {
+          alias: 'Fuchs42',
+          current_age: 18,
+          is_game_over: 1,
+          overall_score: 87,
+          last_seen_at: '2026-08-01 10:00:00',
+          updated_at: '2026-08-01 10:05:00',
+        },
+        {
+          alias: 'Mia, "Pro"',
+          current_age: null,
+          is_game_over: 0,
+          overall_score: null,
+          last_seen_at: null,
+          updated_at: null,
+        },
+      ]);
+
+    const response = await request('GET', '/api/classrooms/42/export.csv', {
+      headers: teacherAuthHeader(7),
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toContain('text/csv');
+    expect(response.headers.get('content-disposition')).toContain('classroom-42-export.csv');
+    expect(response.bytes.slice(0, 3)).toEqual([0xef, 0xbb, 0xbf]);
+    expect(response.data).toBe(
+      'alias,age,isGameOver,overallScore,lastSeenAt,updatedAt\r\n' +
+        'Fuchs42,18,true,87,2026-08-01 10:00:00,2026-08-01 10:05:00\r\n' +
+        '"Mia, ""Pro""",,false,,,\r\n'
+    );
   });
 });

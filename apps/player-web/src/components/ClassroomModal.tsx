@@ -2,10 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { evaluateLifeRun } from '@goal/scoring-engine';
 import { ModalShell } from './ModalShell';
-import { Printer } from 'lucide-react';
+import { Download, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   deleteClassroom,
+  downloadClassroomCsv,
   fetchCertificate,
   fetchClassroomSummary,
   getActiveClassroomId,
@@ -61,6 +62,7 @@ export const ClassroomModal: React.FC = () => {
   const [apiError, setApiError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [deletingClassroomId, setDeletingClassroomId] = useState<number | null>(null);
+  const [exportingCsv, setExportingCsv] = useState(false);
   const studentSession = getStudentSession();
 
   const loadSummary = useCallback(async (classroomId: number, options?: { silent?: boolean }) => {
@@ -188,6 +190,19 @@ export const ClassroomModal: React.FC = () => {
       setApiError(err instanceof Error ? err.message : 'Klasse löschen fehlgeschlagen.');
     } finally {
       setDeletingClassroomId(null);
+    }
+  };
+
+  const handleDownloadCsv = async () => {
+    if (selectedId == null) return;
+    setExportingCsv(true);
+    setApiError(null);
+    try {
+      await downloadClassroomCsv(selectedId);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'CSV-Export fehlgeschlagen.');
+    } finally {
+      setExportingCsv(false);
     }
   };
 
@@ -322,7 +337,16 @@ export const ClassroomModal: React.FC = () => {
             </div>
 
             {getTeacherToken() && selectedClassroom && (
-              <div className="flex justify-end">
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => void handleDownloadCsv()}
+                  disabled={exportingCsv || loading}
+                  className="px-4 py-2 rounded-xl bg-white hover:bg-gray-50 border border-gray-200 text-gray-800 font-extrabold text-xs transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  {exportingCsv ? 'Exportiere…' : 'CSV exportieren'}
+                </button>
                 <button
                   type="button"
                   onClick={() => void handleDeleteClassroom()}
