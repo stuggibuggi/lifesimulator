@@ -21,6 +21,7 @@ import { useGameStore } from '../store/gameStore';
 import { sound } from '../audio/soundSynth';
 import {
   getEducationalScenarioTitle,
+  normalizeClassroomCharacterName,
   resolveClassroomJoinNextStep,
 } from './ClassroomAuthModal.helpers';
 
@@ -63,6 +64,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
 
   const [roomCode, setRoomCode] = useState('');
   const [alias, setAlias] = useState('');
+  const [characterName, setCharacterName] = useState('');
   const [pin, setPin] = useState('');
 
   const [email, setEmail] = useState('');
@@ -124,13 +126,18 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
     setError(null);
     try {
       const session = await joinClassroom(roomCode, alias, pin);
+      const normalizedCharacterName = normalizeClassroomCharacterName(session.alias, characterName);
+      const sessionWithCharacterName = {
+        ...session,
+        characterName: normalizedCharacterName,
+      };
       sound.playFanfare();
-      setStudentSession(session);
+      setStudentSession(sessionWithCharacterName);
 
       const cloud = await loadCloudRun();
       const nextStep = resolveClassroomJoinNextStep({
         hasCloudGameState: Boolean(cloud?.run?.gameState),
-        scenarioId: session.scenarioId,
+        scenarioId: sessionWithCharacterName.scenarioId,
       });
       if (cloud?.run?.gameState) {
         const ok = importSaveState(JSON.stringify(cloud.run.gameState));
@@ -140,7 +147,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
       }
 
       if (nextStep.type === 'START_SCENARIO') {
-        startScenarioGame(nextStep.scenario);
+        startScenarioGame(nextStep.scenario, sessionWithCharacterName.characterName);
       } else {
         setActiveModal('SCENARIO_SELECTION_MODAL');
       }
@@ -286,12 +293,31 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
               </span>
               <input
                 value={alias}
-                onChange={(e) => setAlias(e.target.value)}
+                onChange={(e) => {
+                  const nextAlias = e.target.value;
+                  setAlias(nextAlias);
+                  if (!characterName.trim()) setCharacterName(nextAlias);
+                }}
                 className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-gray-200"
                 placeholder="z. B. Fuchs42"
                 minLength={2}
                 required
               />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-black uppercase text-gray-500">
+                Vorname fürs Spiel
+              </span>
+              <input
+                value={characterName}
+                onChange={(e) => setCharacterName(e.target.value)}
+                className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-gray-200"
+                placeholder={alias || 'z. B. Mia'}
+                maxLength={40}
+              />
+              <span className="mt-1 block text-[11px] font-semibold text-gray-500">
+                Dieser Name erscheint im Spiel. Wenn du leer lässt, verwenden wir deinen Alias.
+              </span>
             </label>
             <label className="block">
               <span className="text-[10px] font-black uppercase text-gray-500">

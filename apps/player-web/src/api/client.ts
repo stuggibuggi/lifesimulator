@@ -70,6 +70,7 @@ export type StudentSession = {
   roomCode: string;
   alias: string;
   scenarioId?: string | null;
+  characterName?: string;
 };
 
 export type ClassroomSummaryMember = {

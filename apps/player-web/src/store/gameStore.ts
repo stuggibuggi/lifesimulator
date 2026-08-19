@@ -104,7 +104,7 @@ interface GameStoreState {
 
   // Actions
   startNewGame: () => void;
-  startScenarioGame: (scenario: EducationalScenario) => void;
+  startScenarioGame: (scenario: EducationalScenario, characterName?: string) => void;
   setTempCharacter: (char: Character) => void;
   confirmCharacterAndGoToGoals: () => void;
   setTempGoals: (goals: LifeGoal[]) => void;
@@ -330,10 +330,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     });
   },
 
-  startScenarioGame: (scenario) => {
+  startScenarioGame: (scenario, characterName) => {
     sound.playFanfare();
+    const safeCharacterName = characterName?.trim().slice(0, 40) || 'Alex';
     const defaultCharacter: Character = {
-      name: 'Alex',
+      name: safeCharacterName,
       avatar: 'student_boy',
       startCondition: scenario.initialCondition,
       bio: scenario.subtitle,

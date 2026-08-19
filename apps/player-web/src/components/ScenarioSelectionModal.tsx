@@ -4,6 +4,7 @@ import { EDUCATIONAL_SCENARIOS } from '@goal/game-content';
 import { EducationalScenario } from '@goal/shared-types';
 import { ModalShell } from './ModalShell';
 import { sound } from '../audio/soundSynth';
+import { getStudentSession } from '../api/client';
 import {
   Sparkles,
   GraduationCap,
@@ -16,6 +17,7 @@ import {
 
 export const ScenarioSelectionModal: React.FC = () => {
   const { closeModal, startScenarioGame } = useGameStore();
+  const studentSession = getStudentSession();
 
   const getScenarioIcon = (iconName: string) => {
     switch (iconName) {
@@ -32,7 +34,7 @@ export const ScenarioSelectionModal: React.FC = () => {
 
   const handleSelectScenario = (scenario: EducationalScenario) => {
     sound.playFanfare();
-    startScenarioGame(scenario);
+    startScenarioGame(scenario, studentSession?.characterName);
   };
 
   return (

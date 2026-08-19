@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EDUCATIONAL_SCENARIOS } from '@goal/game-content';
-import { resolveClassroomJoinNextStep } from './ClassroomAuthModal.helpers';
+import { normalizeClassroomCharacterName, resolveClassroomJoinNextStep } from './ClassroomAuthModal.helpers';
 
 describe('ClassroomAuthModal join flow helpers', () => {
   it('keeps cloud saves ahead of fixed classroom scenarios', () => {
@@ -26,5 +26,11 @@ describe('ClassroomAuthModal join flow helpers', () => {
     expect(
       resolveClassroomJoinNextStep({ hasCloudGameState: false, scenarioId: 'missing-scenario' })
     ).toEqual({ type: 'OPEN_SCENARIO_PICKER' });
+  });
+
+  it('uses the player name first and falls back to alias for classroom starts', () => {
+    expect(normalizeClassroomCharacterName('Fuchs42', '  Mia  ')).toBe('Mia');
+    expect(normalizeClassroomCharacterName('Fuchs42', '   ')).toBe('Fuchs42');
+    expect(normalizeClassroomCharacterName('', '')).toBe('Alex');
   });
 });

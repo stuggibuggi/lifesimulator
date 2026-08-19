@@ -15,6 +15,14 @@ export function getEducationalScenarioTitle(scenarioId?: string | null): string 
   return getEducationalScenarioById(scenarioId)?.title ?? null;
 }
 
+export function normalizeClassroomCharacterName(alias: string, characterName: string): string {
+  const explicitName = characterName.trim().slice(0, 40);
+  if (explicitName) return explicitName;
+
+  const aliasName = alias.trim().slice(0, 40);
+  return aliasName || 'Alex';
+}
+
 export function resolveClassroomJoinNextStep({
   hasCloudGameState,
   scenarioId,
