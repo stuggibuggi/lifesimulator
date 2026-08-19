@@ -37,6 +37,7 @@ import {
   changeEmployedJob,
   startFurtherTraining,
   abortEducationPath,
+  applyLearningCard,
 } from '@goal/simulation-engine';
 import {
   ALL_LIFE_EVENTS,
@@ -135,6 +136,7 @@ interface GameStoreState {
   handleSetEmploymentHours: (hoursWeekly: 30 | 40) => void;
   handleStartFurtherTraining: () => void;
   handleAbortEducationPath: () => void;
+  handleCompleteLearningCard: (cardId: string) => void;
 
   setActiveModal: (modal: ActiveModal) => void;
   closeModal: () => void;
@@ -856,6 +858,22 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       gameState: updated,
       careerActionFeedback: 'Ausbildung/Studium abgebrochen: Du startest jetzt im Quereinstieg.',
     });
+  },
+
+  handleCompleteLearningCard: (cardId) => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = applyLearningCard(gameState, cardId);
+    if (updated === gameState) {
+      sound.playPop();
+      return;
+    }
+
+    sound.playFanfare();
+    set({ gameState: updated });
+    persistLocal(updated);
+    void maybeCloudSave(updated, true);
   },
 
   setActiveModal: (modal) => {

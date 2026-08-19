@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { FINANCIAL_LEARNING_CARDS, LearningCard } from '@goal/game-content';
+import { getLearningCardAchievementId, LEARNING_CARD_REWARD_POINTS } from '@goal/simulation-engine';
 import { ModalShell } from './ModalShell';
 import {
   ShieldCheck,
@@ -35,8 +36,11 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 };
 
 export const LearningModal: React.FC = () => {
-  const { closeModal } = useGameStore();
+  const { gameState, closeModal, handleCompleteLearningCard } = useGameStore();
   const [selectedCard, setSelectedCard] = useState<LearningCard>(FINANCIAL_LEARNING_CARDS[0]);
+  const selectedCardAchievementId = getLearningCardAchievementId(selectedCard.id);
+  const hasLearnedSelectedCard =
+    gameState?.unlockedAchievements.includes(selectedCardAchievementId) ?? false;
 
   return (
     <ModalShell
@@ -103,6 +107,26 @@ export const LearningModal: React.FC = () => {
               💡 {selectedCard.keyFormulaOrRule}
             </div>
           )}
+
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <span className="text-[11px] font-bold text-gray-500">
+              {hasLearnedSelectedCard
+                ? 'Diese Lernkarte zählt bereits zu deinem Finanzwissen.'
+                : `Gibt einmalig +${LEARNING_CARD_REWARD_POINTS} Wissenspunkte.`}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleCompleteLearningCard(selectedCard.id)}
+              disabled={hasLearnedSelectedCard}
+              className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all ${
+                hasLearnedSelectedCard
+                  ? 'bg-matcha-100 text-matcha-800 cursor-default'
+                  : 'bg-matcha-600 hover:bg-matcha-700 text-white shadow-cozy-hover active:scale-95 cursor-pointer'
+              }`}
+            >
+              {hasLearnedSelectedCard ? 'Gelernt ✓' : 'Gelernt'}
+            </button>
+          </div>
         </div>
       </div>
     </ModalShell>
