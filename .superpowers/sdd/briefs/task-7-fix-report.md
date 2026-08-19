@@ -16,4 +16,4 @@
   - Exit 0. 14 test files passed, 73 tests passed.
 
 ### Commits
-- Pending commit message: `fix: harden career job switch and careerDelta edge cases`
+- `cec5fca` - `fix: harden career job switch and careerDelta edge cases`
