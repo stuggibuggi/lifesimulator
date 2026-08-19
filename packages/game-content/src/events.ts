@@ -630,6 +630,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 55,
     probability: 0.12,
     icon: 'Briefcase',
+    requires: { minEmergencyMonths: 3 },
     choices: [
       {
         id: 'c_midlife_change_employer',
@@ -668,6 +669,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 60,
     probability: 0.13,
     icon: 'HeartHandshake',
+    requires: { hasPartner: true, minEmergencyMonths: 2 },
     choices: [
       {
         id: 'c_parent_care_share_costs',
@@ -782,6 +784,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 64,
     probability: 0.14,
     icon: 'PiggyBank',
+    requires: { minEmergencyMonths: 3 },
     choices: [
       {
         id: 'c_bav_use_employer_match',
@@ -820,6 +823,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 67,
     probability: 0.6,
     icon: 'CalendarCheck',
+    requires: { minEmergencyMonths: 3 },
     choices: [
       {
         id: 'c_retirement_budget_reset',

@@ -205,8 +205,24 @@ describe('Lebensereignisse berücksichtigen Eligibility-Regeln', () => {
 });
 
 describe('Lebensereignisse für Midlife und Ruhestandsübergang', () => {
+  function eligibilityReadyState(age: number) {
+    const base = freshState();
+
+    return {
+      ...base,
+      currentAge: age,
+      family: { ...base.family, status: 'PARTNERSHIP' as const },
+      savingsAccount: { ...base.savingsAccount, tagesgeldBalance: 9000 },
+      budget: {
+        ...base.budget,
+        totalFixedExpenses: 1500,
+        totalVariableExpenses: 500,
+      },
+    };
+  }
+
   function eligibleEventIdsAtAge(age: number): string[] {
-    const state = { ...freshState(), currentAge: age };
+    const state = eligibilityReadyState(age);
 
     return getEligibleEvents(ALL_LIFE_EVENTS, state).map((event) => event.id);
   }
@@ -221,6 +237,26 @@ describe('Lebensereignisse für Midlife und Ruhestandsübergang', () => {
         'EVT_PRE_RETIREMENT_BAV',
       ])
     );
+  });
+
+  it('annotiert vier Midlife- und Seniorereignisse mit passenden Eligibility-Regeln', () => {
+    const eventRules = Object.fromEntries(
+      ALL_LIFE_EVENTS.map((event) => [event.id, event.requires])
+    );
+
+    expect(eventRules.EVT_MIDLIFE_JOB_CHANGE).toEqual({ minEmergencyMonths: 3 });
+    expect(eventRules.EVT_PARENT_CARE).toEqual({ hasPartner: true, minEmergencyMonths: 2 });
+    expect(eventRules.EVT_PRE_RETIREMENT_BAV).toEqual({ minEmergencyMonths: 3 });
+    expect(eventRules.EVT_RETIREMENT_TRANSITION).toEqual({ minEmergencyMonths: 3 });
+  });
+
+  it('filtert Midlife- und Seniorereignisse, wenn Rücklagen oder Partner fehlen', () => {
+    const state = { ...freshState(), currentAge: 55 };
+    const eligible = getEligibleEvents(ALL_LIFE_EVENTS, state).map((event) => event.id);
+
+    expect(eligible).not.toContain('EVT_MIDLIFE_JOB_CHANGE');
+    expect(eligible).not.toContain('EVT_PARENT_CARE');
+    expect(eligible).not.toContain('EVT_PRE_RETIREMENT_BAV');
   });
 
   it('enthält den Ruhestandsübergang mit 66 und 67 Jahren', () => {
