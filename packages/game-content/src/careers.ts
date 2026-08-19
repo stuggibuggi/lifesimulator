@@ -89,6 +89,7 @@ export const CAREER_ACTION_CONSTANTS = {
   trainingCostEuro: 1200,
   trainingStressDelta: 5,
   trainingCooldownMonths: 24,
+  jobSwitchCooldownMonths: 12,
   careerDeltaGrossFactor: 1.05,
   maxAdvancementLevel: 5,
 } as const;

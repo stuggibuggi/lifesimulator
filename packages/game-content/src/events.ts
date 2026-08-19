@@ -258,7 +258,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     id: 'EVT_CAREER_LEADERSHIP_STEP',
     title: 'Karrieresprung: Beförderung zur Teamleitung!',
     description:
-      'Deine Leistungen überzeugen die Geschäftsführung. Dir wird die Leitung deines Fachbereichs mit Führungsverantwortung für 6 Mitarbeiter angeboten (+500 €/Monat Netto, höhere Verantwortung).',
+      'Deine Leistungen überzeugen die Geschäftsführung. Dir wird die Leitung deines Fachbereichs mit Führungsverantwortung für 6 Mitarbeiter angeboten. Das kann eine neue Karrierestufe und einen Gehaltssprung von etwa 5 % bringen.',
     category: 'CAREER',
     minAge: 27,
     maxAge: 44,
@@ -267,7 +267,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     choices: [
       {
         id: 'c_leader_accept',
-        label: 'Führungsposition annehmen (+500 €/Mo Gehalt, +15 Stress)',
+        label: 'Führungsposition annehmen (~5 % Gehaltssprung, +15 Stress)',
         description: 'Mehr Gestaltungsspielraum, strategische Verantwortung und dauerhaft höheres Gehalt.',
         costImmediate: 0,
         monthlyCostDelta: 0,

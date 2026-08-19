@@ -195,7 +195,20 @@ export function changeEmployedJob(state: GameState, optionId: string): GameState
   }
 
   const option = JOB_SWITCH_OPTIONS.find((candidate) => candidate.id === optionId);
-  if (!option || state.bankAccount.giroBalance < option.transitionCostEuro) {
+  if (!option) {
+    return state;
+  }
+
+  if (state.career.title === option.title && state.career.branch === option.branch) {
+    return state;
+  }
+
+  const monthsSinceLastJobSwitch = state.career.monthsSinceLastJobSwitch ?? 12;
+  if (monthsSinceLastJobSwitch < CAREER_ACTION_CONSTANTS.jobSwitchCooldownMonths) {
+    return state;
+  }
+
+  if (state.bankAccount.giroBalance < option.transitionCostEuro) {
     return state;
   }
 
@@ -204,6 +217,7 @@ export function changeEmployedJob(state: GameState, optionId: string): GameState
     title: option.title,
     branch: option.branch,
     fullTimeGrossSalary: Math.round(state.career.fullTimeGrossSalary * option.salaryFactor),
+    monthsSinceLastJobSwitch: 0,
   };
   const updated = withUpdatedCareerGross(state, career);
   const transaction = createTransaction(
@@ -296,6 +310,7 @@ export function abortEducationPath(state: GameState): GameState {
     fullTimeGrossSalary: quereinstieg.startingGrossAfterGraduation,
     monthsSinceLastRaiseAttempt: CAREER_ACTION_CONSTANTS.raiseCooldownMonths,
     monthsSinceLastTraining: CAREER_ACTION_CONSTANTS.trainingCooldownMonths,
+    monthsSinceLastJobSwitch: CAREER_ACTION_CONSTANTS.jobSwitchCooldownMonths,
   };
 
   const updated = withUpdatedCareerGross(state, career);

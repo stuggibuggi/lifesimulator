@@ -130,6 +130,7 @@ export function createInitialGameState(
       fullTimeGrossSalary: 0,
       monthsSinceLastRaiseAttempt: 12,
       monthsSinceLastTraining: 24,
+      monthsSinceLastJobSwitch: 12,
     },
 
     activeMobility: 'PUBLIC_TRANSIT',

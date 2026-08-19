@@ -42,6 +42,10 @@ export const CareerModal: React.FC = () => {
     0,
     CAREER_ACTION_CONSTANTS.trainingCooldownMonths - career.monthsSinceLastTraining
   );
+  const jobSwitchCooldownRemaining = Math.max(
+    0,
+    CAREER_ACTION_CONSTANTS.jobSwitchCooldownMonths - (career.monthsSinceLastJobSwitch ?? 12)
+  );
   const isLevelCapReached =
     career.careerAdvancementLevel >= CAREER_ACTION_CONSTANTS.maxAdvancementLevel;
   const canTrain =
@@ -209,7 +213,18 @@ export const CareerModal: React.FC = () => {
               </h4>
               <div className="space-y-3">
                 {JOB_SWITCH_OPTIONS.map((option) => {
-                  const canSwitch = gameState.bankAccount.giroBalance >= option.transitionCostEuro;
+                  const isCurrentJob = career.title === option.title && career.branch === option.branch;
+                  const jobSwitchDisabledText = (() => {
+                    if (isCurrentJob) return 'Das ist bereits dein aktueller Job.';
+                    if (jobSwitchCooldownRemaining > 0) {
+                      return `Jobwechsel wieder in ${jobSwitchCooldownRemaining} Monat(en) möglich.`;
+                    }
+                    if (gameState.bankAccount.giroBalance < option.transitionCostEuro) {
+                      return 'Nicht genug Geld für den Wechsel.';
+                    }
+                    return null;
+                  })();
+                  const canSwitch = jobSwitchDisabledText === null;
                   return (
                     <div
                       key={option.id}
@@ -221,9 +236,9 @@ export const CareerModal: React.FC = () => {
                           {option.branch} · Gehaltsfaktor {Math.round(option.salaryFactor * 100)} % · Kosten{' '}
                           {euro.format(option.transitionCostEuro)}
                         </p>
-                        {!canSwitch && (
+                        {jobSwitchDisabledText && (
                           <p className="mt-1 text-xs font-bold text-amber-700">
-                            Nicht genug Geld für den Wechsel.
+                            {jobSwitchDisabledText}
                           </p>
                         )}
                       </div>

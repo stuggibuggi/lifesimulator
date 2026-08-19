@@ -90,6 +90,7 @@ export interface CareerState {
   fullTimeGrossSalary: number;
   monthsSinceLastRaiseAttempt: number;
   monthsSinceLastTraining: number;
+  monthsSinceLastJobSwitch: number;
 }
 
 export interface BankAccount {

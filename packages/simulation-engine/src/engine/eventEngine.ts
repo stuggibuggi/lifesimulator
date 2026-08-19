@@ -216,7 +216,7 @@ export function applyEventChoice(
     transactions: [tx, ...state.transactions].slice(0, 100),
   };
 
-  if (choice.careerDelta && choice.careerDelta > 0) {
+  if (result.career.type === 'ANGESTELLTER' && choice.careerDelta && choice.careerDelta > 0) {
     const delta = choice.careerDelta;
     const factor = CAREER_ACTION_CONSTANTS.careerDeltaGrossFactor;
     const newFullTimeGross = Math.round(

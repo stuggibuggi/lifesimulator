@@ -194,6 +194,7 @@ export function stepSimulationMonth(
   let updatedCareer = { ...currentState.career };
   updatedCareer.monthsSinceLastRaiseAttempt += 1;
   updatedCareer.monthsSinceLastTraining += 1;
+  updatedCareer.monthsSinceLastJobSwitch = (updatedCareer.monthsSinceLastJobSwitch ?? 12) + 1;
 
   let careerSalaryChanged = false;
   if (currentState.currentMonth === 12) {

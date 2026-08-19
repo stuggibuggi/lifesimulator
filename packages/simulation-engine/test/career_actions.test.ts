@@ -38,6 +38,7 @@ function employedState() {
       careerAdvancementLevel: 1,
       monthsSinceLastRaiseAttempt: 5,
       monthsSinceLastTraining: 10,
+      monthsSinceLastJobSwitch: 12,
     },
   };
 }
@@ -46,9 +47,11 @@ describe('career month counters', () => {
   it('increments raise and training month counters each month', () => {
     const before = employedState();
     before.currentMonth = 3;
+    before.career.monthsSinceLastJobSwitch = 10;
     const { nextState } = stepSimulationMonth(before, ALL_LIFE_EVENTS, new SeededRandom(1));
     expect(nextState.career.monthsSinceLastRaiseAttempt).toBe(6);
     expect(nextState.career.monthsSinceLastTraining).toBe(11);
+    expect(nextState.career.monthsSinceLastJobSwitch).toBe(11);
   });
 
   it('applies year-end raise to fullTimeGrossSalary', () => {
@@ -56,6 +59,18 @@ describe('career month counters', () => {
     const { nextState } = stepSimulationMonth(before, ALL_LIFE_EVENTS, new SeededRandom(1));
     expect(nextState.career.fullTimeGrossSalary).toBe(Math.round(3000 * 1.025));
     expect(nextState.career.monthlySalaryGross).toBe(Math.round(3000 * 1.025));
+  });
+
+  it('applies year-end raise to FTE before scaling 30h gross', () => {
+    const before = employedState();
+    before.career.timeCommitmentHoursWeekly = 30;
+    before.career.monthlySalaryGross = Math.round((3000 * 30) / 40);
+
+    const { nextState } = stepSimulationMonth(before, ALL_LIFE_EVENTS, new SeededRandom(1));
+
+    const expectedFte = Math.round(3000 * 1.025);
+    expect(nextState.career.fullTimeGrossSalary).toBe(expectedFte);
+    expect(nextState.career.monthlySalaryGross).toBe(Math.round((expectedFte * 30) / 40));
   });
 });
 
@@ -123,6 +138,7 @@ describe('career action contracts', () => {
   it('job switch applies factor and cost', () => {
     const before = employedState();
     before.bankAccount.giroBalance = 2000;
+    before.career.monthsSinceLastJobSwitch = 12;
     const option = JOB_SWITCH_OPTIONS[0];
 
     const state = changeEmployedJob(before, option.id);
@@ -137,6 +153,31 @@ describe('career action contracts', () => {
       amount: -option.transitionCostEuro,
       category: 'Karrierewechsel',
     });
+    expect(state.career.monthsSinceLastJobSwitch).toBe(0);
+  });
+
+  it('blocks repeated job switch during cooldown', () => {
+    const before = employedState();
+    before.bankAccount.giroBalance = 2000;
+    before.career.monthsSinceLastJobSwitch = 11;
+    const option = JOB_SWITCH_OPTIONS[0];
+
+    const state = changeEmployedJob(before, option.id);
+
+    expect(state).toBe(before);
+  });
+
+  it('treats switching to the current title and branch as a no-op', () => {
+    const before = employedState();
+    before.bankAccount.giroBalance = 2000;
+    before.career.monthsSinceLastJobSwitch = 12;
+    const option = JOB_SWITCH_OPTIONS[0];
+    before.career.title = option.title;
+    before.career.branch = option.branch;
+
+    const state = changeEmployedJob(before, option.id);
+
+    expect(state).toBe(before);
   });
 
   it('training costs money and raises level', () => {
@@ -173,6 +214,7 @@ describe('career action contracts', () => {
     expect(state.career.fullTimeGrossSalary).toBe(quereinstieg?.startingGrossAfterGraduation);
     expect(state.career.monthsSinceLastRaiseAttempt).toBe(12);
     expect(state.career.monthsSinceLastTraining).toBe(24);
+    expect(state.career.monthsSinceLastJobSwitch).toBe(12);
     expect(state.metrics.stress).toBe(before.metrics.stress + 15);
     expect(state.metrics.happiness).toBe(before.metrics.happiness - 10);
   });

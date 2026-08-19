@@ -38,7 +38,15 @@ import {
   startFurtherTraining,
   abortEducationPath,
 } from '@goal/simulation-engine';
-import { ALL_LIFE_EVENTS, ALL_LIFE_GOALS, CAREER_OPTIONS, EducationCareerOption, EDUCATIONAL_SCENARIOS } from '@goal/game-content';
+import {
+  ALL_LIFE_EVENTS,
+  ALL_LIFE_GOALS,
+  CAREER_ACTION_CONSTANTS,
+  CAREER_OPTIONS,
+  EducationCareerOption,
+  EDUCATIONAL_SCENARIOS,
+  JOB_SWITCH_OPTIONS,
+} from '@goal/game-content';
 import { sound } from '../audio/soundSynth';
 import confetti from 'canvas-confetti';
 import { getStudentSession, saveCloudRun } from '../api/client';
@@ -201,6 +209,7 @@ function sanitizeGameState(state: any): GameState {
           : state.career?.monthlySalaryGross || 0),
       monthsSinceLastRaiseAttempt: state.career?.monthsSinceLastRaiseAttempt ?? 12,
       monthsSinceLastTraining: state.career?.monthsSinceLastTraining ?? 24,
+      monthsSinceLastJobSwitch: state.career?.monthsSinceLastJobSwitch ?? 12,
     },
     activeMobility: state.activeMobility || 'PUBLIC_TRANSIT',
     housing: state.housing || {
@@ -366,6 +375,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             fullTimeGrossSalary: ausbildung.monthlySalaryGross,
             monthsSinceLastRaiseAttempt: 12,
             monthsSinceLastTraining: 24,
+            monthsSinceLastJobSwitch: 12,
           },
           ausbildung.rentEstimated,
           ausbildung.mobilityEstimated
@@ -393,6 +403,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           fullTimeGrossSalary: job.startingGrossAfterGraduation || job.monthlySalaryGross,
           monthsSinceLastRaiseAttempt: 12,
           monthsSinceLastTraining: 24,
+          monthsSinceLastJobSwitch: 12,
         },
         470,
         49
@@ -463,6 +474,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         fullTimeGrossSalary: option.monthlySalaryGross,
         monthsSinceLastRaiseAttempt: 12,
         monthsSinceLastTraining: 24,
+        monthsSinceLastJobSwitch: 12,
       },
       option.rentEstimated,
       option.mobilityEstimated
@@ -726,8 +738,20 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     const updated = changeEmployedJob(gameState, optionId);
     if (updated === gameState) {
+      const option = JOB_SWITCH_OPTIONS.find((candidate) => candidate.id === optionId);
+      const cooldownRemaining = Math.max(
+        0,
+        CAREER_ACTION_CONSTANTS.jobSwitchCooldownMonths -
+          (gameState.career.monthsSinceLastJobSwitch ?? 12)
+      );
+      const feedback =
+        option && gameState.career.title === option.title && gameState.career.branch === option.branch
+          ? 'Das ist bereits dein aktueller Job.'
+          : cooldownRemaining > 0
+            ? `Jobwechsel wieder in ${cooldownRemaining} Monat(en) möglich.`
+            : 'Der Jobwechsel ist aktuell nicht möglich.';
       sound.playWarning();
-      set({ careerActionFeedback: 'Der Jobwechsel ist aktuell nicht möglich.' });
+      set({ careerActionFeedback: feedback });
       return;
     }
 

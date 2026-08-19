@@ -257,6 +257,25 @@ describe('careerDelta on event choices', () => {
     expect(next.career.careerAdvancementLevel).toBe(2);
     expect(next.career.fullTimeGrossSalary).toBe(Math.round(3000 * 1.05));
   });
+
+  it('does not apply careerDelta outside an employed career', () => {
+    const state = freshState();
+    state.career = {
+      ...state.career,
+      type: 'SCHUELER',
+      isCompleted: false,
+      monthlySalaryGross: 0,
+      fullTimeGrossSalary: 0,
+      careerAdvancementLevel: 0,
+    };
+    const event = ALL_LIFE_EVENTS.find((e) => e.id === 'EVT_CAREER_LEADERSHIP_STEP')!;
+    const choice = event.choices.find((c) => c.id === 'c_leader_accept')!;
+
+    const next = applyEventChoice(state, event, choice);
+
+    expect(next.career.careerAdvancementLevel).toBe(0);
+    expect(next.career.fullTimeGrossSalary).toBe(0);
+  });
 });
 
 describe('GOAL_REISEN', () => {
