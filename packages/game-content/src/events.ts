@@ -218,6 +218,43 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     ],
   },
   {
+    id: 'EVT_CAREER_OVERTIME_PROJECT',
+    title: 'Karriere: Großes Projekt mit Überstunden?',
+    description:
+      'Dein Team braucht dich für ein zeitkritisches Kundenprojekt. Überstunden bringen Prämie, belasten aber Freizeit und Gesundheit.',
+    category: 'CAREER',
+    minAge: 22,
+    maxAge: 35,
+    probability: 0.1,
+    icon: 'Briefcase',
+    choices: [
+      {
+        id: 'c_overtime_accept',
+        label: 'Überstunden annehmen (+900 € Prämie, +Stress)',
+        description: 'Du nimmst die Prämie mit und schiebst Freizeit.',
+        costImmediate: 900,
+        happinessDelta: -5,
+        stressDelta: 15,
+        healthDelta: -5,
+        knowledgeDelta: 15,
+        careerDelta: 1,
+        learningTip:
+          'Überstundenprämien sind kurzfristig attraktiv. Langfristig zählen nachhaltige Arbeitszeit und Erholung — sonst drohen Ausfallkosten.',
+      },
+      {
+        id: 'c_overtime_decline',
+        label: 'Ablehnen und Grenzen setzen',
+        description: 'Du schützt Freizeit und Gesundheit.',
+        costImmediate: 0,
+        happinessDelta: 10,
+        stressDelta: -5,
+        knowledgeDelta: 10,
+        learningTip:
+          'Nein sagen ist eine Finanzentscheidung: weniger Geld jetzt, oft mehr Stabilität und weniger Krankheitsrisiko später.',
+      },
+    ],
+  },
+  {
     id: 'EVT_CAREER_LEADERSHIP_STEP',
     title: 'Karrieresprung: Beförderung zur Teamleitung!',
     description:

@@ -229,6 +229,14 @@ describe('Lebensereignisse für Midlife und Ruhestandsübergang', () => {
   });
 });
 
+describe('young-career overtime project event', () => {
+  it('includes overtime project event for age 28', () => {
+    const state = { ...freshState(), currentAge: 28 };
+    const eligible = getEligibleEvents(ALL_LIFE_EVENTS, state);
+    expect(eligible.some((e) => e.id === 'EVT_CAREER_OVERTIME_PROJECT')).toBe(true);
+  });
+});
+
 describe('careerDelta on event choices', () => {
   it('applies careerDelta to advancement level and gross', () => {
     const state = freshState();
