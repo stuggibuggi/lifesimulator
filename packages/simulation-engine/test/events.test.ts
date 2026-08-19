@@ -229,6 +229,28 @@ describe('Lebensereignisse für Midlife und Ruhestandsübergang', () => {
   });
 });
 
+describe('careerDelta on event choices', () => {
+  it('applies careerDelta to advancement level and gross', () => {
+    const state = freshState();
+    state.career = {
+      ...state.career,
+      type: 'ANGESTELLTER',
+      isCompleted: true,
+      monthlySalaryGross: 3000,
+      fullTimeGrossSalary: 3000,
+      timeCommitmentHoursWeekly: 40,
+      careerAdvancementLevel: 1,
+      monthsSinceLastRaiseAttempt: 12,
+      monthsSinceLastTraining: 24,
+    };
+    const event = ALL_LIFE_EVENTS.find((e) => e.id === 'EVT_CAREER_LEADERSHIP_STEP')!;
+    const choice = event.choices.find((c) => c.id === 'c_leader_accept')!;
+    const next = applyEventChoice(state, event, choice);
+    expect(next.career.careerAdvancementLevel).toBe(2);
+    expect(next.career.fullTimeGrossSalary).toBe(Math.round(3000 * 1.05));
+  });
+});
+
 describe('GOAL_REISEN', () => {
   it('wird nach dem Urlaubsnotfall und dem Städtetrip erreicht', () => {
     const travelGoal = ALL_LIFE_GOALS.find((goal) => goal.id === 'GOAL_REISEN');

@@ -6,8 +6,10 @@ import {
   LifeEventEligibilityRules,
   TransactionRecord,
 } from '@goal/shared-types';
+import { CAREER_ACTION_CONSTANTS } from '@goal/game-content';
 import { SeededRandom } from '../math/random';
 import { calculateEmergencyFundMonths } from '../math/finance';
+import { refreshCareerPayroll } from './careerContracts';
 
 /**
  * Filtert Ereignisse, die für das aktuelle Alter und den aktuellen Lebenszustand infrage kommen
@@ -189,7 +191,7 @@ export function applyEventChoice(
     );
   }
 
-  return {
+  let result: GameState = {
     ...state,
     bankAccount: {
       ...state.bankAccount,
@@ -213,6 +215,25 @@ export function applyEventChoice(
     ],
     transactions: [tx, ...state.transactions].slice(0, 100),
   };
+
+  if (choice.careerDelta && choice.careerDelta > 0) {
+    const delta = choice.careerDelta;
+    const factor = CAREER_ACTION_CONSTANTS.careerDeltaGrossFactor;
+    const newFullTimeGross = Math.round(
+      result.career.fullTimeGrossSalary * Math.pow(factor, delta)
+    );
+    const newLevel = Math.min(
+      CAREER_ACTION_CONSTANTS.maxAdvancementLevel,
+      result.career.careerAdvancementLevel + delta
+    );
+    result = refreshCareerPayroll(result, {
+      ...result.career,
+      careerAdvancementLevel: newLevel,
+      fullTimeGrossSalary: newFullTimeGross,
+    });
+  }
+
+  return result;
 }
 
 function rngHelper(): string {
