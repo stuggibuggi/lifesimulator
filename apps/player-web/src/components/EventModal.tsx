@@ -2,7 +2,33 @@ import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { EventChoice } from '@goal/shared-types';
 import { sound } from '../audio/soundSynth';
-import { AlertCircle, CheckCircle2, ShieldAlert, Sparkles, BookOpen } from 'lucide-react';
+import {
+  AlertTriangle,
+  Award,
+  Baby,
+  BookOpen,
+  Briefcase,
+  Cake,
+  CalendarCheck,
+  CheckCircle2,
+  Droplet,
+  Heart,
+  HeartHandshake,
+  Home,
+  Landmark,
+  Map,
+  PiggyBank,
+  Plane,
+  Receipt,
+  ShoppingBag,
+  Smartphone,
+  Smile,
+  Sparkles,
+  Stethoscope,
+  TrendingUp,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react';
 
 const EVENT_IMAGE_MAP: Record<string, string> = {
   EVT_PHONE_BROKEN: '/assets/events/event_phone_broken.jpg',
@@ -16,6 +42,42 @@ const EVENT_IMAGE_MAP: Record<string, string> = {
   EVT_AGE_18_MILESTONE: '/assets/locations/bank.svg',
   EVT_SURPRISE_UTILITY_BILL: '/assets/locations/home.svg',
 };
+
+// Keep this in sync with `packages/game-content/src/events.ts` icon names.
+const LIFE_EVENT_ICON_MAP: Record<string, LucideIcon> = {
+  AlertTriangle,
+  Award,
+  Baby,
+  Briefcase,
+  Cake,
+  CalendarCheck,
+  Droplet,
+  Heart,
+  HeartHandshake,
+  Home,
+  Landmark,
+  Map,
+  PiggyBank,
+  Plane,
+  Receipt,
+  ShoppingBag,
+  Smartphone,
+  Smile,
+  Sparkles,
+  Stethoscope,
+  TrendingUp,
+  Wrench,
+};
+
+export function hasLifeEventIconMapping(iconName: string): boolean {
+  return Boolean(LIFE_EVENT_ICON_MAP[iconName]);
+}
+
+function LifeEventIcon({ iconName }: { iconName: string }) {
+  const Icon = LIFE_EVENT_ICON_MAP[iconName] ?? Sparkles;
+
+  return <Icon className="w-8 h-8 text-matcha-700" aria-hidden="true" />;
+}
 
 export const EventModal: React.FC = () => {
   const { gameState, eventChoiceFeedback, handleEventChoice, dismissEventFeedback } = useGameStore();
@@ -101,7 +163,7 @@ export const EventModal: React.FC = () => {
   if (!gameState || !gameState.activeEvent) return null;
 
   const event = gameState.activeEvent;
-  const imageSrc = EVENT_IMAGE_MAP[event.id] || '/assets/locations/home.svg';
+  const imageSrc = EVENT_IMAGE_MAP[event.id];
 
   const handleConfirm = (choice: EventChoice) => {
     handleEventChoice(choice);
@@ -115,7 +177,13 @@ export const EventModal: React.FC = () => {
         <div className="p-6 md:p-7 pb-4 border-b border-gray-100 bg-white/95 backdrop-blur-md shrink-0">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-cozy-cream border-2 border-cozy-border shrink-0 shadow-xs">
-              <img src={imageSrc} alt={event.title} className="w-full h-full object-cover" />
+              {imageSrc ? (
+                <img src={imageSrc} alt={event.title} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-matcha-50">
+                  <LifeEventIcon iconName={event.icon} />
+                </div>
+              )}
             </div>
 
             <div className="flex-1 min-w-0">
