@@ -1,3 +1,21 @@
+# Events Authoring
+
+## Content Validation
+
+Phase D adds a lightweight validator for static game content. It is not a CMS; it only checks content contracts that commonly break event authoring:
+
+- life-event ids are unique
+- scenario ids are unique
+- life-event `icon` values are supported by `EventModal`
+- every scenario `recommendedGoals` entry points to an existing goal id
+
+Run it before adding or changing events, scenarios, or goals:
+
+```bash
+npm run content:validate
+```
+
+If validation fails, fix the reported content ids or icon names before shipping the content change.
 # Event Authoring
 
 Lebensereignisse werden in `packages/game-content/src/events.ts` als `LifeEvent` gepflegt. Neben Alter, Wahrscheinlichkeit und bereits entschiedenen Events kann ein Event optionale Eligibility-Regeln definieren.
