@@ -79,6 +79,8 @@ export type ActiveModal =
   | 'JOIN_CLASS_MODAL'
   | null;
 
+export type CloudSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
+
 export interface EventChoiceFeedback {
   eventTitle: string;
   choiceLabel: string;
@@ -96,6 +98,9 @@ interface GameStoreState {
   prng: SeededRandom | null;
   eventChoiceFeedback: EventChoiceFeedback | null;
   careerActionFeedback: string | null;
+  cloudSaveStatus: CloudSaveStatus;
+  cloudSaveMessage?: string;
+  cloudSaveAt?: number;
 
   // Actions
   startNewGame: () => void;
@@ -171,7 +176,14 @@ function createEventChoiceFeedback(
 }
 
 async function maybeCloudSave(state: GameState, force = false) {
-  if (!getStudentSession()) return;
+  if (!getStudentSession()) {
+    useGameStore.setState({
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: undefined,
+      cloudSaveAt: undefined,
+    });
+    return;
+  }
   cloudSaveCounter += 1;
   const shouldSave =
     force ||
@@ -179,6 +191,11 @@ async function maybeCloudSave(state: GameState, force = false) {
     Boolean(state.activeEvent) ||
     cloudSaveCounter % 12 === 0;
   if (!shouldSave) return;
+
+  useGameStore.setState({
+    cloudSaveStatus: 'saving',
+    cloudSaveMessage: 'Cloud-Save läuft…',
+  });
 
   try {
     const extras = state.isGameOver
@@ -191,8 +208,17 @@ async function maybeCloudSave(state: GameState, force = false) {
         })()
       : undefined;
     await saveCloudRun(state, extras);
+    useGameStore.setState({
+      cloudSaveStatus: 'saved',
+      cloudSaveMessage: 'Cloud-Spielstand gespeichert',
+      cloudSaveAt: Date.now(),
+    });
   } catch {
     // Offline / API down → localStorage remains source of truth
+    useGameStore.setState({
+      cloudSaveStatus: typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'error',
+      cloudSaveMessage: 'Cloud-Save fehlgeschlagen, lokal gespeichert',
+    });
   }
 }
 
@@ -279,6 +305,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   prng: null,
   eventChoiceFeedback: null,
   careerActionFeedback: null,
+  cloudSaveStatus: 'idle',
+  cloudSaveMessage: undefined,
+  cloudSaveAt: undefined,
 
   startNewGame: () => {
     sound.playPop();
@@ -295,6 +324,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       activeModal: null,
       eventChoiceFeedback: null,
       careerActionFeedback: null,
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: undefined,
+      cloudSaveAt: undefined,
     });
   },
 
@@ -426,6 +458,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       activeModal: null,
       eventChoiceFeedback: null,
       careerActionFeedback: null,
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: getStudentSession() ? 'Cloud-Save bereit' : undefined,
+      cloudSaveAt: undefined,
     });
   },
 
@@ -487,6 +522,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       activeModal: null,
       eventChoiceFeedback: null,
       careerActionFeedback: null,
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: undefined,
+      cloudSaveAt: undefined,
     });
 
     try {
@@ -853,6 +891,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         activeModal: null,
         eventChoiceFeedback: null,
         careerActionFeedback: null,
+        cloudSaveStatus: 'idle',
+        cloudSaveMessage: getStudentSession() ? 'Cloud-Save bereit' : undefined,
+        cloudSaveAt: undefined,
       });
       return true;
     } catch {
@@ -879,6 +920,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         activeModal: null,
         eventChoiceFeedback: null,
         careerActionFeedback: null,
+        cloudSaveStatus: 'idle',
+        cloudSaveMessage: getStudentSession() ? 'Cloud-Save bereit' : undefined,
+        cloudSaveAt: undefined,
       });
       return true;
     } catch {
@@ -898,6 +942,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       prng: null,
       eventChoiceFeedback: null,
       careerActionFeedback: null,
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: undefined,
+      cloudSaveAt: undefined,
     });
   },
 }));

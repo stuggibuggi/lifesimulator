@@ -19,12 +19,17 @@ import {
   Target,
   FileText,
   Smartphone,
+  Cloud,
 } from 'lucide-react';
 import { calculateEmergencyFundMonths } from '@goal/simulation-engine';
+import { getStudentSession } from '../api/client';
 
 export const TopNavigation: React.FC = () => {
   const {
     gameState,
+    cloudSaveStatus,
+    cloudSaveMessage,
+    cloudSaveAt,
     stepMonth,
     togglePause,
     setSpeed,
@@ -55,6 +60,25 @@ export const TopNavigation: React.FC = () => {
   );
 
   const ageProgress = ((gameState.currentAge - 16) / (67 - 16)) * 100;
+  const hasStudentSession = Boolean(getStudentSession());
+  const cloudSaveLabel =
+    cloudSaveStatus === 'saving'
+      ? 'Cloud: speichert…'
+      : cloudSaveStatus === 'saved'
+        ? `Cloud: gespeichert${cloudSaveAt ? ` ${new Date(cloudSaveAt).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}` : ''}`
+        : cloudSaveStatus === 'offline'
+          ? 'Cloud: offline – lokal OK'
+          : cloudSaveStatus === 'error'
+            ? 'Cloud: Fehler – lokal OK'
+            : 'Cloud: bereit';
+  const cloudSaveClass =
+    cloudSaveStatus === 'saved'
+      ? 'bg-matcha-50 text-matcha-800 border-matcha-200'
+      : cloudSaveStatus === 'saving'
+        ? 'bg-skyline-50 text-skyline-800 border-skyline-200'
+        : cloudSaveStatus === 'error' || cloudSaveStatus === 'offline'
+          ? 'bg-amber-50 text-amber-800 border-amber-200'
+          : 'bg-gray-50 text-gray-600 border-gray-200';
 
   return (
     <header className="bg-white/95 backdrop-blur-md border-b-2 border-cozy-border sticky top-0 z-30 shadow-xs px-3 sm:px-5 py-2.5 select-none">
@@ -97,6 +121,17 @@ export const TopNavigation: React.FC = () => {
 
           {/* Right: Simulation Controls, Smartphone Button & Shortcuts */}
           <div className="flex items-center gap-2 shrink-0 ml-auto">
+            {hasStudentSession && (
+              <div
+                className={`hidden md:flex px-3 py-1.5 rounded-xl border text-[11px] font-black items-center gap-1.5 shadow-2xs ${cloudSaveClass}`}
+                title={cloudSaveMessage || cloudSaveLabel}
+                aria-live="polite"
+              >
+                <Cloud className="w-3.5 h-3.5" />
+                <span>{cloudSaveLabel}</span>
+              </div>
+            )}
+
             {/* Play/Pause & Speed Group */}
             <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200 shadow-xs">
               <button
