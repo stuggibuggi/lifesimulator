@@ -14,8 +14,11 @@ import {
   Sparkles,
   RotateCcw,
   Download,
+  Printer,
   Lightbulb,
 } from 'lucide-react';
+import { formatEvaluationTitle, formatSaveFilename } from './EvaluationView.helpers';
+import { CertificatePanel } from './CertificatePanel';
 
 export const EvaluationView: React.FC = () => {
   const { gameState, resetGame, exportSaveState } = useGameStore();
@@ -23,6 +26,7 @@ export const EvaluationView: React.FC = () => {
   if (!gameState) return null;
 
   const evaluation = evaluateLifeRun(gameState);
+  const evaluationEndAge = gameState.scenarioEndAge ?? gameState.currentAge ?? 67;
 
   const handleDownload = () => {
     sound.playPop();
@@ -31,9 +35,13 @@ export const EvaluationView: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `GOAL_Lebenslauf_${gameState.character.name}_Alter30.json`;
+    a.download = formatSaveFilename(gameState.character.name, evaluationEndAge);
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handlePrintCertificate = () => {
+    window.print();
   };
 
   return (
@@ -42,7 +50,7 @@ export const EvaluationView: React.FC = () => {
       <div className="bg-gradient-to-br from-white via-cozy-cream to-sakura-50 rounded-4xl p-8 md:p-12 shadow-cozy border-4 border-[#f0e7d5] text-center relative overflow-hidden mb-8">
         <div className="inline-flex items-center gap-2 bg-matcha-100 text-matcha-800 px-4 py-1.5 rounded-full font-extrabold text-sm mb-4 border border-matcha-200">
           <Sparkles className="w-4 h-4 text-matcha-600" />
-          Abschlussbilanz mit 30 Jahren
+          {formatEvaluationTitle(evaluationEndAge)}
         </div>
 
         {/* Big Grade Badge */}
@@ -73,6 +81,33 @@ export const EvaluationView: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {gameState.isGameOver && (
+        <div className="bg-white p-6 md:p-8 rounded-4xl shadow-cozy border-2 border-cozy-border mb-8">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+            <div>
+              <h2 className="text-xl font-black text-gray-900">
+                Dein Finanzführerschein-Zertifikat
+              </h2>
+              <p className="text-xs text-gray-500 font-medium mt-1">
+                Druckbar für Schule, Bewerbung oder deine persönliche Dokumentation.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handlePrintCertificate}
+              className="w-full md:w-auto px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <Printer className="w-4 h-4" />
+              Zertifikat ausdrucken / als PDF speichern
+            </button>
+          </div>
+          <CertificatePanel
+            certificate={evaluation.certificate}
+            footerHint="Solo-Lebenslauf abgeschlossen"
+          />
+        </div>
+      )}
 
       {/* 6 Dimensions Breakdown Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

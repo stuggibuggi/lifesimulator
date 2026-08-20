@@ -1,9 +1,58 @@
 import { Router } from 'express';
+import bcrypt from 'bcryptjs';
 import { query } from '../db/pool.js';
 import { requireTeacher, requireStudent } from '../middleware/auth.js';
 import { makeRoomCode, makeSessionToken, parseJsonField } from '../util.js';
 
 const router = Router();
+const PIN_PATTERN = /^\d{4,6}$/;
+const PIN_FAIL_LIMIT = 5;
+const PIN_COOLDOWN_MS = 60 * 1000;
+const failedPinAttempts = new Map();
+
+function csvCell(value) {
+  const normalized = value == null ? '' : String(value);
+  if (/[",\r\n]/.test(normalized)) {
+    return `"${normalized.replace(/"/g, '""')}"`;
+  }
+  return normalized;
+}
+
+function csvRow(values) {
+  return `${values.map(csvCell).join(',')}\r\n`;
+}
+
+function getClientIp(req) {
+  return req.ip || req.socket?.remoteAddress || 'unknown';
+}
+
+function makeFailedPinKey(classroomId, alias, clientIp) {
+  return `${classroomId}:${alias}:${clientIp}`;
+}
+
+function getActivePinCooldown(key, now = Date.now()) {
+  const attempt = failedPinAttempts.get(key);
+  if (!attempt) return null;
+
+  if (attempt.lockedUntil && attempt.lockedUntil > now) {
+    return attempt.lockedUntil;
+  }
+
+  if (attempt.lockedUntil && attempt.lockedUntil <= now) {
+    failedPinAttempts.delete(key);
+  }
+
+  return null;
+}
+
+function recordFailedPinAttempt(key, now = Date.now()) {
+  const previous = failedPinAttempts.get(key);
+  const count = (previous?.count || 0) + 1;
+  failedPinAttempts.set(key, {
+    count,
+    lockedUntil: count >= PIN_FAIL_LIMIT ? now + PIN_COOLDOWN_MS : null,
+  });
+}
 
 router.post('/', requireTeacher, async (req, res) => {
   try {
@@ -68,6 +117,32 @@ router.get('/mine', requireTeacher, async (req, res) => {
   }
 });
 
+router.delete('/:id', requireTeacher, async (req, res) => {
+  try {
+    const classroomId = Number(req.params.id);
+    if (!Number.isInteger(classroomId) || classroomId <= 0) {
+      return res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    }
+
+    const rooms = await query('SELECT id, teacher_id FROM classrooms WHERE id = ? LIMIT 1', [
+      classroomId,
+    ]);
+    if (!rooms.length) return res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    if (Number(rooms[0].teacher_id) !== Number(req.teacher.teacherId)) {
+      return res.status(403).json({ error: 'Du kannst nur eigene Klassen löschen.' });
+    }
+
+    await query('DELETE FROM classrooms WHERE id = ? AND teacher_id = ?', [
+      classroomId,
+      req.teacher.teacherId,
+    ]);
+    res.status(204).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Klasse konnte nicht gelöscht werden.' });
+  }
+});
+
 router.post('/join', async (req, res) => {
   try {
     const roomCode = String(req.body.roomCode || '')
@@ -76,6 +151,7 @@ router.post('/join', async (req, res) => {
     const alias = String(req.body.alias || '')
       .trim()
       .slice(0, 80);
+    const pin = String(req.body.pin || '').trim();
 
     if (!roomCode || alias.length < 2) {
       return res.status(400).json({ error: 'Raumcode und Alias (mind. 2 Zeichen) nötig.' });
@@ -93,24 +169,90 @@ router.post('/join', async (req, res) => {
       return res.status(410).json({ error: 'Dieser Klassenraum ist abgelaufen.' });
     }
 
+    const memberships = await query(
+      `SELECT id, pin_hash, session_token
+       FROM memberships
+       WHERE classroom_id = ? AND alias = ?
+       LIMIT 1`,
+      [room.id, alias]
+    );
+
     const sessionToken = makeSessionToken();
-    let membershipId;
-    try {
-      const inserted = await query(
-        'INSERT INTO memberships (classroom_id, alias, session_token) VALUES (?, ?, ?)',
-        [room.id, alias, sessionToken]
-      );
-      membershipId = inserted.insertId;
-    } catch (err) {
-      if (err && err.code === 'ER_DUP_ENTRY') {
-        return res.status(409).json({ error: 'Dieser Alias ist in der Klasse schon vergeben.' });
+    const existingMembership = memberships[0];
+
+    if (existingMembership) {
+      if (!pin) {
+        return res.status(401).json({
+          error: 'Dieser Alias existiert bereits. Bitte gib deine PIN ein.',
+          needsPin: true,
+        });
       }
-      throw err;
+
+      const failedPinKey = makeFailedPinKey(room.id, alias, getClientIp(req));
+      const lockedUntil = getActivePinCooldown(failedPinKey);
+      if (lockedUntil) {
+        const retryAfterSeconds = Math.ceil((lockedUntil - Date.now()) / 1000);
+        return res
+          .set('Retry-After', String(retryAfterSeconds))
+          .status(429)
+          .json({
+            error: 'PIN wurde zu oft falsch eingegeben. Bitte warte 60 Sekunden und versuche es erneut.',
+          });
+      }
+
+      const pinOk =
+        existingMembership.pin_hash && (await bcrypt.compare(pin, existingMembership.pin_hash));
+      if (!pinOk) {
+        recordFailedPinAttempt(failedPinKey);
+        return res.status(401).json({
+          error: 'PIN stimmt nicht. Bitte prüfe Alias und PIN.',
+          needsPin: true,
+        });
+      }
+
+      failedPinAttempts.delete(failedPinKey);
+
+      await query('UPDATE memberships SET session_token = ?, last_seen_at = NOW() WHERE id = ?', [
+        sessionToken,
+        existingMembership.id,
+      ]);
+
+      return res.json({
+        sessionToken,
+        membershipId: existingMembership.id,
+        classroom: {
+          id: room.id,
+          roomCode: room.room_code,
+          title: room.title,
+          scenarioId: room.scenario_id,
+        },
+        alias,
+      });
     }
 
-    await query('INSERT INTO game_runs (membership_id, current_age, is_game_over) VALUES (?, 16, 0)', [
-      membershipId,
-    ]);
+    if (!PIN_PATTERN.test(pin)) {
+      return res.status(400).json({ error: 'PIN muss aus 4 bis 6 Ziffern bestehen.' });
+    }
+
+    const pinHash = await bcrypt.hash(pin, 10);
+    const inserted = await query(
+      `INSERT INTO memberships (classroom_id, alias, session_token, pin_hash, last_seen_at)
+       VALUES (?, ?, ?, ?, NOW())`,
+      [room.id, alias, sessionToken, pinHash]
+    );
+    const membershipId = inserted.insertId;
+
+    try {
+      await query('INSERT INTO game_runs (membership_id, current_age, is_game_over) VALUES (?, 16, 0)', [
+        membershipId,
+      ]);
+    } catch (err) {
+      if (err && err.code === 'ER_DUP_ENTRY') {
+        // Defensive only: membership lookup above should prevent duplicate game runs.
+      } else {
+        throw err;
+      }
+    }
 
     res.status(201).json({
       sessionToken,
@@ -129,11 +271,61 @@ router.post('/join', async (req, res) => {
   }
 });
 
+router.get('/:id/export.csv', requireTeacher, async (req, res) => {
+  try {
+    const classroomId = Number(req.params.id);
+    if (!Number.isInteger(classroomId) || classroomId <= 0) {
+      return res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    }
+
+    const rooms = await query(
+      'SELECT id, teacher_id, title FROM classrooms WHERE id = ? LIMIT 1',
+      [classroomId]
+    );
+    if (!rooms.length) return res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    if (Number(rooms[0].teacher_id) !== Number(req.teacher.teacherId)) {
+      return res.status(403).json({ error: 'Du kannst nur eigene Klassen exportieren.' });
+    }
+
+    const members = await query(
+      `SELECT m.alias, m.last_seen_at, g.current_age, g.is_game_over, g.overall_score, g.updated_at
+       FROM memberships m
+       LEFT JOIN game_runs g ON g.membership_id = m.id
+       WHERE m.classroom_id = ?
+       ORDER BY m.alias ASC`,
+      [classroomId]
+    );
+
+    const header = csvRow(['alias', 'age', 'isGameOver', 'overallScore', 'lastSeenAt', 'updatedAt']);
+    const rows = members
+      .map((m) =>
+        csvRow([
+          m.alias,
+          m.current_age,
+          Boolean(m.is_game_over),
+          m.overall_score,
+          m.last_seen_at,
+          m.updated_at,
+        ])
+      )
+      .join('');
+
+    res
+      .status(200)
+      .set('Content-Type', 'text/csv; charset=utf-8')
+      .set('Content-Disposition', `attachment; filename="classroom-${classroomId}-export.csv"`)
+      .send(`\uFEFF${header}${rows}`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'CSV-Export fehlgeschlagen.' });
+  }
+});
+
 router.get('/:id/summary', requireTeacher, async (req, res) => {
   try {
     const classroomId = Number(req.params.id);
     const rooms = await query(
-      'SELECT id, room_code, title FROM classrooms WHERE id = ? AND teacher_id = ? LIMIT 1',
+      'SELECT id, room_code, title, scenario_id, expires_at FROM classrooms WHERE id = ? AND teacher_id = ? LIMIT 1',
       [classroomId, req.teacher.teacherId]
     );
     if (!rooms.length) return res.status(404).json({ error: 'Klasse nicht gefunden.' });
@@ -196,6 +388,8 @@ router.get('/:id/summary', requireTeacher, async (req, res) => {
         id: rooms[0].id,
         roomCode: rooms[0].room_code,
         title: rooms[0].title,
+        scenarioId: rooms[0].scenario_id,
+        expiresAt: rooms[0].expires_at,
       },
       summary: {
         memberCount: members.length,

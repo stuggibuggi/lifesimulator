@@ -6,8 +6,10 @@ import {
   getEligibleEvents,
   SeededRandom,
   stepSimulationMonth,
+  updateGoalsProgress,
 } from '../src';
 import { ALL_LIFE_EVENTS, ALL_LIFE_GOALS } from '@goal/game-content';
+import { LifeEvent } from '@goal/shared-types';
 
 function freshState() {
   return createInitialGameState(
@@ -71,5 +73,289 @@ describe('Lebensereignisse werden nach der Entscheidung nicht wiederholt', () =>
         state = applyEventChoice(state, state.activeEvent, state.activeEvent.choices[0]);
       }
     }
+  });
+});
+
+function testEvent(id: string): LifeEvent {
+  return {
+    id,
+    title: id,
+    description: 'Testereignis',
+    category: 'FINANCIAL',
+    minAge: 16,
+    maxAge: 67,
+    probability: 1,
+    icon: 'Test',
+    choices: [
+      {
+        id: `${id}_choice`,
+        label: 'OK',
+        description: 'Testentscheidung',
+        costImmediate: 0,
+        learningTip: 'Test',
+      },
+    ],
+  };
+}
+
+describe('Lebensereignisse berücksichtigen Eligibility-Regeln', () => {
+  it('filtert Ereignisse, deren benötigte Haftpflichtversicherung fehlt', () => {
+    const state = { ...freshState(), currentAge: 25 };
+    const events = [
+      {
+        ...testEvent('EVT_NEEDS_HAFTPFLICHT'),
+        requires: { hasHaftpflicht: true },
+      },
+    ] as LifeEvent[];
+
+    expect(getEligibleEvents(events, state)).toHaveLength(0);
+  });
+
+  it('erlaubt Ereignisse, wenn alle benötigten Zustände erfüllt sind', () => {
+    const state = {
+      ...freshState(),
+      currentAge: 30,
+      housing: { ...freshState().housing, type: 'PROPERTY_OWNERSHIP' as const },
+      family: { ...freshState().family, status: 'PARTNERSHIP' as const },
+      savingsAccount: { ...freshState().savingsAccount, tagesgeldBalance: 6000 },
+      budget: {
+        ...freshState().budget,
+        totalFixedExpenses: 1500,
+        totalVariableExpenses: 500,
+      },
+      insurances: [
+        {
+          id: 'INS_TEST_HAFTPFLICHT',
+          type: 'HAFTPFLICHT' as const,
+          name: 'Privathaftpflicht',
+          providerName: 'Test',
+          monthlyPremium: 5,
+          coverageLimit: 10_000_000,
+          deductible: 0,
+          availableDeductibles: [0],
+          waitingPeriodMonthsRemaining: 0,
+          initialWaitingPeriodMonths: 0,
+          importanceTier: 'ESSENTIAL' as const,
+          isActive: true,
+          explanation: 'Test',
+        },
+      ],
+    };
+    const events = [
+      {
+        ...testEvent('EVT_MATCHES_ALL_RULES'),
+        requires: {
+          hasHaftpflicht: true,
+          hasPartner: true,
+          isHomeOwner: true,
+          minEmergencyMonths: 3,
+        },
+      },
+    ] as LifeEvent[];
+
+    expect(getEligibleEvents(events, state).map((event) => event.id)).toEqual([
+      'EVT_MATCHES_ALL_RULES',
+    ]);
+  });
+
+  it('filtert Ereignisse, wenn die Notfallreserve unter minEmergencyMonths liegt', () => {
+    const state = {
+      ...freshState(),
+      currentAge: 25,
+      savingsAccount: { ...freshState().savingsAccount, tagesgeldBalance: 1000 },
+      budget: {
+        ...freshState().budget,
+        totalFixedExpenses: 1500,
+        totalVariableExpenses: 500,
+      },
+    };
+    const events = [
+      {
+        ...testEvent('EVT_NEEDS_EMERGENCY_FUND'),
+        requires: { minEmergencyMonths: 3 },
+      },
+    ] as LifeEvent[];
+
+    expect(getEligibleEvents(events, state)).toHaveLength(0);
+  });
+
+  it('Haftpflicht-Lehrevents bleiben ohne Versicherung sichtbar', () => {
+    const state = { ...freshState(), currentAge: 25 };
+    const uninsuredEligible = getEligibleEvents(ALL_LIFE_EVENTS, state).map((event) => event.id);
+
+    expect(uninsuredEligible).toContain('EVT_WATER_DAMAGE_NEIGHBOR');
+    expect(uninsuredEligible).toContain('EVT_ACCIDENT_BIKE');
+  });
+
+  it('filtert Ereignisse, wenn Ausschlussregeln auf den aktuellen Zustand zutreffen', () => {
+    const state = {
+      ...freshState(),
+      currentAge: 30,
+      family: { ...freshState().family, status: 'MARRIED' as const },
+    };
+    const events = [
+      {
+        ...testEvent('EVT_SINGLE_ONLY'),
+        excludes: { hasPartner: true },
+      },
+    ] as LifeEvent[];
+
+    expect(getEligibleEvents(events, state)).toHaveLength(0);
+  });
+});
+
+describe('Lebensereignisse für Midlife und Ruhestandsübergang', () => {
+  function eligibilityReadyState(age: number) {
+    const base = freshState();
+
+    return {
+      ...base,
+      currentAge: age,
+      family: { ...base.family, status: 'PARTNERSHIP' as const },
+      savingsAccount: { ...base.savingsAccount, tagesgeldBalance: 9000 },
+      budget: {
+        ...base.budget,
+        totalFixedExpenses: 1500,
+        totalVariableExpenses: 500,
+      },
+    };
+  }
+
+  function eligibleEventIdsAtAge(age: number): string[] {
+    const state = eligibilityReadyState(age);
+
+    return getEligibleEvents(ALL_LIFE_EVENTS, state).map((event) => event.id);
+  }
+
+  it('enthält die Midlife- und Vorruhestandsereignisse mit 55 Jahren', () => {
+    expect(eligibleEventIdsAtAge(55)).toEqual(
+      expect.arrayContaining([
+        'EVT_MIDLIFE_JOB_CHANGE',
+        'EVT_PARENT_CARE',
+        'EVT_INHERITANCE_MODEST',
+        'EVT_HEALTH_CHECK_50',
+        'EVT_PRE_RETIREMENT_BAV',
+      ])
+    );
+  });
+
+  it('annotiert vier Midlife- und Seniorereignisse mit passenden Eligibility-Regeln', () => {
+    const eventRules = Object.fromEntries(
+      ALL_LIFE_EVENTS.map((event) => [event.id, event.requires])
+    );
+
+    expect(eventRules.EVT_MIDLIFE_JOB_CHANGE).toEqual({ minEmergencyMonths: 3 });
+    expect(eventRules.EVT_PARENT_CARE).toEqual({ hasPartner: true, minEmergencyMonths: 2 });
+    expect(eventRules.EVT_PRE_RETIREMENT_BAV).toEqual({ minEmergencyMonths: 3 });
+    expect(eventRules.EVT_RETIREMENT_TRANSITION).toEqual({ minEmergencyMonths: 3 });
+  });
+
+  it('filtert Midlife- und Seniorereignisse, wenn Rücklagen oder Partner fehlen', () => {
+    const state = { ...freshState(), currentAge: 55 };
+    const eligible = getEligibleEvents(ALL_LIFE_EVENTS, state).map((event) => event.id);
+
+    expect(eligible).not.toContain('EVT_MIDLIFE_JOB_CHANGE');
+    expect(eligible).not.toContain('EVT_PARENT_CARE');
+    expect(eligible).not.toContain('EVT_PRE_RETIREMENT_BAV');
+  });
+
+  it('enthält den Ruhestandsübergang mit 66 und 67 Jahren', () => {
+    expect(eligibleEventIdsAtAge(66)).toContain('EVT_RETIREMENT_TRANSITION');
+    expect(eligibleEventIdsAtAge(67)).toContain('EVT_RETIREMENT_TRANSITION');
+  });
+});
+
+describe('young-career overtime project event', () => {
+  it('includes overtime project event for age 28', () => {
+    const state = { ...freshState(), currentAge: 28 };
+    const eligible = getEligibleEvents(ALL_LIFE_EVENTS, state);
+    expect(eligible.some((e) => e.id === 'EVT_CAREER_OVERTIME_PROJECT')).toBe(true);
+  });
+});
+
+describe('careerDelta on event choices', () => {
+  it('applies careerDelta to advancement level and gross', () => {
+    const state = freshState();
+    state.career = {
+      ...state.career,
+      type: 'ANGESTELLTER',
+      isCompleted: true,
+      monthlySalaryGross: 3000,
+      fullTimeGrossSalary: 3000,
+      timeCommitmentHoursWeekly: 40,
+      careerAdvancementLevel: 1,
+      monthsSinceLastRaiseAttempt: 12,
+      monthsSinceLastTraining: 24,
+    };
+    const event = ALL_LIFE_EVENTS.find((e) => e.id === 'EVT_CAREER_LEADERSHIP_STEP')!;
+    const choice = event.choices.find((c) => c.id === 'c_leader_accept')!;
+    const next = applyEventChoice(state, event, choice);
+    expect(next.career.careerAdvancementLevel).toBe(2);
+    expect(next.career.fullTimeGrossSalary).toBe(Math.round(3000 * 1.05));
+  });
+
+  it('does not apply careerDelta outside an employed career', () => {
+    const state = freshState();
+    state.career = {
+      ...state.career,
+      type: 'SCHUELER',
+      isCompleted: false,
+      monthlySalaryGross: 0,
+      fullTimeGrossSalary: 0,
+      careerAdvancementLevel: 0,
+    };
+    const event = ALL_LIFE_EVENTS.find((e) => e.id === 'EVT_CAREER_LEADERSHIP_STEP')!;
+    const choice = event.choices.find((c) => c.id === 'c_leader_accept')!;
+
+    const next = applyEventChoice(state, event, choice);
+
+    expect(next.career.careerAdvancementLevel).toBe(0);
+    expect(next.career.fullTimeGrossSalary).toBe(0);
+  });
+});
+
+describe('GOAL_REISEN', () => {
+  it('wird nach dem Urlaubsnotfall und dem Städtetrip erreicht', () => {
+    const travelGoal = ALL_LIFE_GOALS.find((goal) => goal.id === 'GOAL_REISEN');
+    const cityBreakEvent = ALL_LIFE_EVENTS.find((event) => event.id === 'EVT_TRAVEL_CITY_BREAK');
+
+    expect(travelGoal).toBeDefined();
+    expect(cityBreakEvent).toBeDefined();
+    expect(cityBreakEvent?.minAge).toBe(18);
+    expect(cityBreakEvent?.maxAge).toBe(50);
+    expect(cityBreakEvent?.choices.map((choice) => choice.id)).toEqual([
+      'c_travel_budget_trip',
+      'c_travel_luxury_trip',
+    ]);
+
+    const state = {
+      ...freshState(),
+      goals: [{ ...travelGoal!, currentValue: 0, isAchieved: false }],
+      pastEvents: [
+        {
+          eventId: 'EVT_TRAVEL_HEALTH_EMERGENCY',
+          eventTitle: 'Urlaubsnotfall',
+          choiceId: 'c_travel_pay_self',
+          choiceLabel: 'Kosten selbst tragen',
+          age: 19,
+          month: 5,
+          financialImpact: -1100,
+        },
+        {
+          eventId: cityBreakEvent!.id,
+          eventTitle: cityBreakEvent!.title,
+          choiceId: 'c_travel_budget_trip',
+          choiceLabel: 'Budget-Städtetrip',
+          age: 22,
+          month: 7,
+          financialImpact: -450,
+        },
+      ],
+    };
+
+    const [updatedGoal] = updateGoalsProgress(state);
+
+    expect(updatedGoal.currentValue).toBe(2);
+    expect(updatedGoal.isAchieved).toBe(true);
   });
 });

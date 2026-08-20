@@ -160,3 +160,19 @@ export const FINANCIAL_LEARNING_CARDS: LearningCard[] = [
     icon: 'PieChart',
   },
 ];
+
+export const LIFE_EVENT_LEARNING_CARD_MAP: Record<string, string> = {
+  EVT_AGE_18_MILESTONE: 'CARD_DISPO',
+  EVT_BNPL_TRAP: 'CARD_BNPL_RISK',
+  EVT_ACCIDENT_BIKE: 'CARD_HAFTPFLICHT',
+  EVT_WATER_DAMAGE_NEIGHBOR: 'CARD_HAFTPFLICHT',
+  EVT_SURPRISE_UTILITY_BILL: 'CARD_NOTGROSCHEN',
+  EVT_PRE_RETIREMENT_BAV: 'CARD_BAV_AG_ZUSCHUSS',
+  EVT_RETIREMENT_TRANSITION: 'CARD_RENTENLUECKE',
+};
+
+export function getLearningCardForLifeEvent(eventId: string): LearningCard | undefined {
+  const cardId = LIFE_EVENT_LEARNING_CARD_MAP[eventId];
+
+  return FINANCIAL_LEARNING_CARDS.find((card) => card.id === cardId);
+}

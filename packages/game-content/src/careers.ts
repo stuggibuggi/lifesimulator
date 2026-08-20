@@ -77,3 +77,59 @@ export const CAREER_OPTIONS: EducationCareerOption[] = [
       'Sofortiges Einkommen und Unabhängigkeit, aber das spätere Gehaltspotenzial steigt ohne Weiterbildung langsamer.',
   },
 ];
+
+export const CAREER_ACTION_CONSTANTS = {
+  softRaiseFactor: 1.02,
+  hardRaiseFactor: 1.08,
+  hardRaiseBaseChance: 0.35,
+  hardRaiseChancePerLevel: 0.08,
+  hardRaiseMaxChance: 0.75,
+  hardRaiseFailStress: 12,
+  raiseCooldownMonths: 12,
+  trainingCostEuro: 1200,
+  trainingStressDelta: 5,
+  trainingCooldownMonths: 24,
+  jobSwitchCooldownMonths: 12,
+  careerDeltaGrossFactor: 1.05,
+  maxAdvancementLevel: 5,
+} as const;
+
+export interface JobSwitchOption {
+  id: string;
+  title: string;
+  branch: string;
+  salaryFactor: number; // applied to fullTimeGrossSalary
+  transitionCostEuro: number;
+  stressDelta: number;
+  happinessDelta: number;
+}
+
+export const JOB_SWITCH_OPTIONS: JobSwitchOption[] = [
+  {
+    id: 'JOB_SWITCH_IT_SERVICE',
+    title: 'IT-Systembetreuung',
+    branch: 'IT & Digitalisierung',
+    salaryFactor: 1.08,
+    transitionCostEuro: 400,
+    stressDelta: 5,
+    happinessDelta: 10,
+  },
+  {
+    id: 'JOB_SWITCH_PUBLIC',
+    title: 'Öffentlicher Dienst (Sachbearbeitung)',
+    branch: 'Verwaltung',
+    salaryFactor: 0.95,
+    transitionCostEuro: 200,
+    stressDelta: -8,
+    happinessDelta: 5,
+  },
+  {
+    id: 'JOB_SWITCH_SALES',
+    title: 'Außendienst / Kundenberatung',
+    branch: 'Vertrieb',
+    salaryFactor: 1.12,
+    transitionCostEuro: 600,
+    stressDelta: 12,
+    happinessDelta: 5,
+  },
+];

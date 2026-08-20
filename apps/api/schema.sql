@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS memberships (
   classroom_id INT UNSIGNED NOT NULL,
   alias VARCHAR(80) NOT NULL,
   session_token VARCHAR(64) NOT NULL UNIQUE,
+  pin_hash VARCHAR(255) NULL,
+  last_seen_at DATETIME NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_memberships_classroom FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE,
   UNIQUE KEY uq_classroom_alias (classroom_id, alias)

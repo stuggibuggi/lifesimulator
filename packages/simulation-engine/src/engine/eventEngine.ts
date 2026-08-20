@@ -3,9 +3,13 @@ import {
   GameState,
   InsuranceContract,
   LifeEvent,
+  LifeEventEligibilityRules,
   TransactionRecord,
 } from '@goal/shared-types';
+import { CAREER_ACTION_CONSTANTS } from '@goal/game-content';
 import { SeededRandom } from '../math/random';
+import { calculateEmergencyFundMonths } from '../math/finance';
+import { refreshCareerPayroll } from './careerContracts';
 
 /**
  * Filtert Ereignisse, die für das aktuelle Alter und den aktuellen Lebenszustand infrage kommen
@@ -27,8 +31,54 @@ export function getEligibleEvents(
       return false;
     }
 
+    if (event.requires && !matchesEventRules(event.requires, state)) {
+      return false;
+    }
+
+    if (event.excludes && matchesEventRules(event.excludes, state)) {
+      return false;
+    }
+
     return true;
   });
+}
+
+function matchesEventRules(
+  rules: LifeEventEligibilityRules | undefined,
+  state: GameState
+): boolean {
+  if (!rules) {
+    return true;
+  }
+
+  const hasHaftpflicht = state.insurances.some(
+    (insurance) => insurance.type === 'HAFTPFLICHT' && insurance.isActive
+  );
+  const hasPartner = state.family.status !== 'SINGLE';
+  const isHomeOwner = state.housing.type === 'PROPERTY_OWNERSHIP';
+  const emergencyMonths = calculateEmergencyFundMonths(
+    state.savingsAccount.tagesgeldBalance,
+    state.budget.totalFixedExpenses,
+    state.budget.totalVariableExpenses
+  );
+
+  if (rules.hasHaftpflicht !== undefined && rules.hasHaftpflicht !== hasHaftpflicht) {
+    return false;
+  }
+
+  if (rules.hasPartner !== undefined && rules.hasPartner !== hasPartner) {
+    return false;
+  }
+
+  if (rules.isHomeOwner !== undefined && rules.isHomeOwner !== isHomeOwner) {
+    return false;
+  }
+
+  if (rules.minEmergencyMonths !== undefined && emergencyMonths < rules.minEmergencyMonths) {
+    return false;
+  }
+
+  return true;
 }
 
 /**
@@ -141,7 +191,7 @@ export function applyEventChoice(
     );
   }
 
-  return {
+  let result: GameState = {
     ...state,
     bankAccount: {
       ...state.bankAccount,
@@ -165,6 +215,25 @@ export function applyEventChoice(
     ],
     transactions: [tx, ...state.transactions].slice(0, 100),
   };
+
+  if (result.career.type === 'ANGESTELLTER' && choice.careerDelta && choice.careerDelta > 0) {
+    const delta = choice.careerDelta;
+    const factor = CAREER_ACTION_CONSTANTS.careerDeltaGrossFactor;
+    const newFullTimeGross = Math.round(
+      result.career.fullTimeGrossSalary * Math.pow(factor, delta)
+    );
+    const newLevel = Math.min(
+      CAREER_ACTION_CONSTANTS.maxAdvancementLevel,
+      result.career.careerAdvancementLevel + delta
+    );
+    result = refreshCareerPayroll(result, {
+      ...result.career,
+      careerAdvancementLevel: newLevel,
+      fullTimeGrossSalary: newFullTimeGross,
+    });
+  }
+
+  return result;
 }
 
 function rngHelper(): string {

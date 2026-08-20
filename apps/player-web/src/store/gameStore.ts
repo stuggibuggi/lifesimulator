@@ -32,8 +32,23 @@ import {
   changeCareerPath,
   calculateGermanPayroll,
   SeededRandom,
+  requestSalaryRaise,
+  setEmploymentHours,
+  changeEmployedJob,
+  startFurtherTraining,
+  abortEducationPath,
+  applyLearningCard,
 } from '@goal/simulation-engine';
-import { ALL_LIFE_EVENTS, ALL_LIFE_GOALS, CAREER_OPTIONS, EducationCareerOption, EDUCATIONAL_SCENARIOS } from '@goal/game-content';
+import {
+  ALL_LIFE_EVENTS,
+  ALL_LIFE_GOALS,
+  CAREER_ACTION_CONSTANTS,
+  CAREER_OPTIONS,
+  EducationCareerOption,
+  EDUCATIONAL_SCENARIOS,
+  getLearningCardForLifeEvent,
+  JOB_SWITCH_OPTIONS,
+} from '@goal/game-content';
 import { sound } from '../audio/soundSynth';
 import confetti from 'canvas-confetti';
 import { getStudentSession, saveCloudRun } from '../api/client';
@@ -66,6 +81,16 @@ export type ActiveModal =
   | 'JOIN_CLASS_MODAL'
   | null;
 
+export type CloudSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
+
+export interface EventChoiceFeedback {
+  eventTitle: string;
+  choiceLabel: string;
+  learningTip: string;
+  financialImpact: number;
+  phoneTipCardId?: string;
+}
+
 interface GameStoreState {
   gameState: GameState | null;
   gamePhase: GamePhase;
@@ -74,10 +99,16 @@ interface GameStoreState {
   tempGoals: LifeGoal[];
   selectedScenario: EducationalScenario | null;
   prng: SeededRandom | null;
+  eventChoiceFeedback: EventChoiceFeedback | null;
+  pendingPhoneTipCardId: string | null;
+  careerActionFeedback: string | null;
+  cloudSaveStatus: CloudSaveStatus;
+  cloudSaveMessage?: string;
+  cloudSaveAt?: number;
 
   // Actions
   startNewGame: () => void;
-  startScenarioGame: (scenario: EducationalScenario) => void;
+  startScenarioGame: (scenario: EducationalScenario, characterName?: string) => void;
   setTempCharacter: (char: Character) => void;
   confirmCharacterAndGoToGoals: () => void;
   setTempGoals: (goals: LifeGoal[]) => void;
@@ -90,6 +121,7 @@ interface GameStoreState {
   setSpeed: (speed: 1 | 2 | 5) => void;
 
   handleEventChoice: (choice: EventChoice) => void;
+  dismissEventFeedback: () => void;
   handleToggleInsurance: (insurance: InsuranceContract, deductible?: number, healthPreCondition?: boolean) => void;
   handleSetSavingsRates: (emergencyRate: number, etfRate: number) => void;
   handleTakeLoan: (title: string, amount: number, interest: number, months: number, type?: any) => void;
@@ -102,6 +134,13 @@ interface GameStoreState {
   handleAdjustChildren: (newCount: number) => void;
   handleSetBavContribution: (monthlyContribution: number) => void;
   handleSetTaxParameters: (taxClass: TaxClass, hasChurchTax: boolean) => void;
+  handleRequestSalaryRaise: (mode: 'soft' | 'hard') => void;
+  handleChangeEmployedJob: (optionId: string) => void;
+  handleSetEmploymentHours: (hoursWeekly: 30 | 40) => void;
+  handleStartFurtherTraining: () => void;
+  handleAbortEducationPath: () => void;
+  handleCompleteLearningCard: (cardId: string) => void;
+  clearPendingPhoneTip: () => void;
 
   setActiveModal: (modal: ActiveModal) => void;
   closeModal: () => void;
@@ -124,8 +163,34 @@ function persistLocal(state: GameState) {
   }
 }
 
+function createEventChoiceFeedback(
+  updatedState: GameState,
+  eventId: string,
+  eventTitle: string,
+  choice: EventChoice
+): EventChoiceFeedback {
+  const appliedChoice = [...updatedState.pastEvents]
+    .reverse()
+    .find((pastEvent) => pastEvent.eventId === eventId && pastEvent.choiceId === choice.id);
+
+  return {
+    eventTitle,
+    choiceLabel: choice.label,
+    learningTip: choice.learningTip,
+    financialImpact: appliedChoice?.financialImpact ?? choice.costImmediate,
+    phoneTipCardId: getLearningCardForLifeEvent(eventId)?.id,
+  };
+}
+
 async function maybeCloudSave(state: GameState, force = false) {
-  if (!getStudentSession()) return;
+  if (!getStudentSession()) {
+    useGameStore.setState({
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: undefined,
+      cloudSaveAt: undefined,
+    });
+    return;
+  }
   cloudSaveCounter += 1;
   const shouldSave =
     force ||
@@ -133,6 +198,11 @@ async function maybeCloudSave(state: GameState, force = false) {
     Boolean(state.activeEvent) ||
     cloudSaveCounter % 12 === 0;
   if (!shouldSave) return;
+
+  useGameStore.setState({
+    cloudSaveStatus: 'saving',
+    cloudSaveMessage: 'Cloud-Save läuft…',
+  });
 
   try {
     const extras = state.isGameOver
@@ -145,8 +215,17 @@ async function maybeCloudSave(state: GameState, force = false) {
         })()
       : undefined;
     await saveCloudRun(state, extras);
+    useGameStore.setState({
+      cloudSaveStatus: 'saved',
+      cloudSaveMessage: 'Cloud-Spielstand gespeichert',
+      cloudSaveAt: Date.now(),
+    });
   } catch {
     // Offline / API down → localStorage remains source of truth
+    useGameStore.setState({
+      cloudSaveStatus: typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'error',
+      cloudSaveMessage: 'Cloud-Save fehlgeschlagen, lokal gespeichert',
+    });
   }
 }
 
@@ -154,6 +233,17 @@ function sanitizeGameState(state: any): GameState {
   return {
     ...state,
     version: '0.5.0',
+    career: {
+      ...state.career,
+      fullTimeGrossSalary:
+        state.career?.fullTimeGrossSalary ??
+        (state.career?.timeCommitmentHoursWeekly === 30
+          ? Math.round((state.career?.monthlySalaryGross || 0) * 40 / 30)
+          : state.career?.monthlySalaryGross || 0),
+      monthsSinceLastRaiseAttempt: state.career?.monthsSinceLastRaiseAttempt ?? 12,
+      monthsSinceLastTraining: state.career?.monthsSinceLastTraining ?? 24,
+      monthsSinceLastJobSwitch: state.career?.monthsSinceLastJobSwitch ?? 12,
+    },
     activeMobility: state.activeMobility || 'PUBLIC_TRANSIT',
     housing: state.housing || {
       type: 'PARENTS',
@@ -220,6 +310,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   tempGoals: [],
   selectedScenario: null,
   prng: null,
+  eventChoiceFeedback: null,
+  pendingPhoneTipCardId: null,
+  careerActionFeedback: null,
+  cloudSaveStatus: 'idle',
+  cloudSaveMessage: undefined,
+  cloudSaveAt: undefined,
 
   startNewGame: () => {
     sound.playPop();
@@ -234,13 +330,20 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       tempGoals: [],
       selectedScenario: EDUCATIONAL_SCENARIOS[0],
       activeModal: null,
+      eventChoiceFeedback: null,
+      pendingPhoneTipCardId: null,
+      careerActionFeedback: null,
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: undefined,
+      cloudSaveAt: undefined,
     });
   },
 
-  startScenarioGame: (scenario) => {
+  startScenarioGame: (scenario, characterName) => {
     sound.playFanfare();
+    const safeCharacterName = characterName?.trim().slice(0, 40) || 'Alex';
     const defaultCharacter: Character = {
-      name: 'Alex',
+      name: safeCharacterName,
       avatar: 'student_boy',
       startCondition: scenario.initialCondition,
       bio: scenario.subtitle,
@@ -311,6 +414,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             timeCommitmentHoursWeekly: ausbildung.timeCommitmentHoursWeekly,
             careerAdvancementLevel: 0,
             isCompleted: false,
+            fullTimeGrossSalary: ausbildung.monthlySalaryGross,
+            monthsSinceLastRaiseAttempt: 12,
+            monthsSinceLastTraining: 24,
+            monthsSinceLastJobSwitch: 12,
           },
           ausbildung.rentEstimated,
           ausbildung.mobilityEstimated
@@ -335,6 +442,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           timeCommitmentHoursWeekly: job.timeCommitmentHoursWeekly,
           careerAdvancementLevel: 1,
           isCompleted: true,
+          fullTimeGrossSalary: job.startingGrossAfterGraduation || job.monthlySalaryGross,
+          monthsSinceLastRaiseAttempt: 12,
+          monthsSinceLastTraining: 24,
+          monthsSinceLastJobSwitch: 12,
         },
         470,
         49
@@ -355,6 +466,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       prng: rng,
       gamePhase: 'PLAYING',
       activeModal: null,
+      eventChoiceFeedback: null,
+      pendingPhoneTipCardId: null,
+      careerActionFeedback: null,
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: getStudentSession() ? 'Cloud-Save bereit' : undefined,
+      cloudSaveAt: undefined,
     });
   },
 
@@ -400,6 +517,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         timeCommitmentHoursWeekly: option.timeCommitmentHoursWeekly,
         careerAdvancementLevel: 0,
         isCompleted: false,
+        fullTimeGrossSalary: option.monthlySalaryGross,
+        monthsSinceLastRaiseAttempt: 12,
+        monthsSinceLastTraining: 24,
+        monthsSinceLastJobSwitch: 12,
       },
       option.rentEstimated,
       option.mobilityEstimated
@@ -410,6 +531,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       prng: rng,
       gamePhase: 'PLAYING',
       activeModal: null,
+      eventChoiceFeedback: null,
+      pendingPhoneTipCardId: null,
+      careerActionFeedback: null,
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: undefined,
+      cloudSaveAt: undefined,
     });
 
     try {
@@ -508,7 +635,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (!gameState || !gameState.activeEvent) return;
 
     sound.playPop();
-    const updatedState = applyEventChoice(gameState, gameState.activeEvent, choice);
+    const event = gameState.activeEvent;
+    const updatedState = applyEventChoice(gameState, event, choice);
+    const eventChoiceFeedback = createEventChoiceFeedback(updatedState, event.id, event.title, choice);
 
     const newAchieved = updatedState.goals.some(
       (g, idx) => g.isAchieved && !gameState.goals[idx].isAchieved
@@ -518,9 +647,22 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       confetti({ particleCount: 80, spread: 60 });
     }
 
-    set({ gameState: updatedState });
+    set({
+      gameState: updatedState,
+      eventChoiceFeedback,
+      pendingPhoneTipCardId: eventChoiceFeedback.phoneTipCardId ?? null,
+    });
     persistLocal(updatedState);
     void maybeCloudSave(updatedState, true);
+  },
+
+  dismissEventFeedback: () => {
+    const { gameState } = get();
+    sound.playPop();
+    set({
+      eventChoiceFeedback: null,
+      gameState: gameState ? { ...gameState, activeEvent: null } : gameState,
+    });
   },
 
   handleToggleInsurance: (insurance, deductible, healthPreCondition) => {
@@ -624,6 +766,138 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     set({ gameState: updated });
   },
 
+  handleRequestSalaryRaise: (mode) => {
+    const { gameState, prng } = get();
+    if (!gameState) return;
+
+    const rng = prng || new SeededRandom(gameState.seed);
+    const { state: updated, result } = requestSalaryRaise(gameState, mode, rng);
+
+    if (!result.ok || result.kind === 'hard_fail') {
+      sound.playWarning();
+    } else {
+      sound.playCoin();
+    }
+
+    set({
+      gameState: updated,
+      prng: rng,
+      careerActionFeedback: result.message,
+    });
+  },
+
+  handleChangeEmployedJob: (optionId) => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = changeEmployedJob(gameState, optionId);
+    if (updated === gameState) {
+      const option = JOB_SWITCH_OPTIONS.find((candidate) => candidate.id === optionId);
+      const cooldownRemaining = Math.max(
+        0,
+        CAREER_ACTION_CONSTANTS.jobSwitchCooldownMonths -
+          (gameState.career.monthsSinceLastJobSwitch ?? 12)
+      );
+      const feedback =
+        option && gameState.career.title === option.title && gameState.career.branch === option.branch
+          ? 'Das ist bereits dein aktueller Job.'
+          : cooldownRemaining > 0
+            ? `Jobwechsel wieder in ${cooldownRemaining} Monat(en) möglich.`
+            : 'Der Jobwechsel ist aktuell nicht möglich.';
+      sound.playWarning();
+      set({ careerActionFeedback: feedback });
+      return;
+    }
+
+    sound.playCoin();
+    set({
+      gameState: updated,
+      careerActionFeedback: 'Du hast den Job erfolgreich gewechselt.',
+    });
+  },
+
+  handleSetEmploymentHours: (hoursWeekly) => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = setEmploymentHours(gameState, hoursWeekly);
+    if (updated === gameState) {
+      sound.playWarning();
+      set({ careerActionFeedback: 'Die Arbeitszeit kann aktuell nicht geändert werden.' });
+      return;
+    }
+
+    sound.playPop();
+    set({
+      gameState: updated,
+      careerActionFeedback:
+        hoursWeekly === 30
+          ? 'Du arbeitest jetzt in Teilzeit mit 30 Stunden pro Woche.'
+          : 'Du arbeitest jetzt wieder 40 Stunden pro Woche.',
+    });
+  },
+
+  handleStartFurtherTraining: () => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = startFurtherTraining(gameState);
+    if (updated === gameState) {
+      sound.playWarning();
+      set({ careerActionFeedback: 'Die Weiterbildung ist aktuell nicht möglich.' });
+      return;
+    }
+
+    sound.playCoin();
+    set({
+      gameState: updated,
+      careerActionFeedback: 'Weiterbildung gebucht: Dein Karrierelevel steigt.',
+    });
+  },
+
+  handleAbortEducationPath: () => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = abortEducationPath(gameState);
+    if (updated === gameState) {
+      sound.playWarning();
+      set({ careerActionFeedback: 'Der Abbruch ist für diesen Karriereweg nicht möglich.' });
+      return;
+    }
+
+    sound.playWarning();
+    set({
+      gameState: updated,
+      careerActionFeedback: 'Ausbildung/Studium abgebrochen: Du startest jetzt im Quereinstieg.',
+    });
+  },
+
+  handleCompleteLearningCard: (cardId) => {
+    const { gameState } = get();
+    if (!gameState) return;
+
+    const updated = applyLearningCard(gameState, cardId);
+    if (updated === gameState) {
+      sound.playPop();
+      return;
+    }
+
+    sound.playFanfare();
+    set({
+      gameState: updated,
+      pendingPhoneTipCardId:
+        get().pendingPhoneTipCardId === cardId ? null : get().pendingPhoneTipCardId,
+    });
+    persistLocal(updated);
+    void maybeCloudSave(updated, true);
+  },
+
+  clearPendingPhoneTip: () => {
+    sound.playPop();
+    set({ pendingPhoneTipCardId: null });
+  },
+
   setActiveModal: (modal) => {
     sound.playPop();
     set({ activeModal: modal });
@@ -631,7 +905,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
   closeModal: () => {
     sound.playPop();
-    set({ activeModal: null });
+    set({ activeModal: null, careerActionFeedback: null });
   },
 
   saveToLocalStorage: () => {
@@ -656,6 +930,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         prng: new SeededRandom(sanitized.seed),
         gamePhase: sanitized.isGameOver ? 'EVALUATION' : 'PLAYING',
         activeModal: null,
+        eventChoiceFeedback: null,
+        pendingPhoneTipCardId: null,
+        careerActionFeedback: null,
+        cloudSaveStatus: 'idle',
+        cloudSaveMessage: getStudentSession() ? 'Cloud-Save bereit' : undefined,
+        cloudSaveAt: undefined,
       });
       return true;
     } catch {
@@ -680,6 +960,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         prng: new SeededRandom(sanitized.seed),
         gamePhase: sanitized.isGameOver ? 'EVALUATION' : 'PLAYING',
         activeModal: null,
+        eventChoiceFeedback: null,
+        careerActionFeedback: null,
+        cloudSaveStatus: 'idle',
+        cloudSaveMessage: getStudentSession() ? 'Cloud-Save bereit' : undefined,
+        cloudSaveAt: undefined,
       });
       return true;
     } catch {
@@ -697,6 +982,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       tempGoals: [],
       selectedScenario: null,
       prng: null,
+      eventChoiceFeedback: null,
+      pendingPhoneTipCardId: null,
+      careerActionFeedback: null,
+      cloudSaveStatus: 'idle',
+      cloudSaveMessage: undefined,
+      cloudSaveAt: undefined,
     });
   },
 }));

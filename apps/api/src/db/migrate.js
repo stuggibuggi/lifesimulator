@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS memberships (
   classroom_id INT UNSIGNED NOT NULL,
   alias VARCHAR(80) NOT NULL,
   session_token VARCHAR(64) NOT NULL UNIQUE,
+  pin_hash VARCHAR(255) NULL,
+  last_seen_at DATETIME NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_memberships_classroom FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE,
   UNIQUE KEY uq_classroom_alias (classroom_id, alias)
@@ -66,6 +68,8 @@ const ALTERS = [
   'ALTER TABLE teachers ADD COLUMN verification_expires_at DATETIME NULL',
   'ALTER TABLE teachers ADD COLUMN reset_token_hash VARCHAR(64) NULL',
   'ALTER TABLE teachers ADD COLUMN reset_expires_at DATETIME NULL',
+  'ALTER TABLE memberships ADD COLUMN pin_hash VARCHAR(255) NULL',
+  'ALTER TABLE memberships ADD COLUMN last_seen_at DATETIME NULL',
 ];
 
 async function migrate() {
@@ -89,7 +93,7 @@ async function migrate() {
       }
     }
 
-    console.log('MariaDB schema ready (incl. teacher email-auth columns).');
+    console.log('MariaDB schema ready (incl. teacher email-auth and student resume columns).');
   } finally {
     conn.release();
     await pool.end();

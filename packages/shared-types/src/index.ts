@@ -87,6 +87,10 @@ export interface CareerState {
   timeCommitmentHoursWeekly: number;
   careerAdvancementLevel: number; // 0..5
   isCompleted: boolean;
+  fullTimeGrossSalary: number;
+  monthsSinceLastRaiseAttempt: number;
+  monthsSinceLastTraining: number;
+  monthsSinceLastJobSwitch: number;
 }
 
 export interface BankAccount {
@@ -395,6 +399,13 @@ export interface EventChoice {
   learningTip: string;
 }
 
+export interface LifeEventEligibilityRules {
+  hasHaftpflicht?: boolean;
+  hasPartner?: boolean;
+  isHomeOwner?: boolean;
+  minEmergencyMonths?: number;
+}
+
 export interface LifeEvent {
   id: string;
   title: string;
@@ -405,6 +416,8 @@ export interface LifeEvent {
   probability: number;
   icon: string;
   imagePlaceholderId?: string;
+  requires?: LifeEventEligibilityRules;
+  excludes?: LifeEventEligibilityRules;
   choices: EventChoice[];
 }
 

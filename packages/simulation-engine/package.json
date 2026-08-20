@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@goal/game-content": "*",
     "@goal/shared-types": "*"
   },
   "devDependencies": {

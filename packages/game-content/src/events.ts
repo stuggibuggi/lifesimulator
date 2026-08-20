@@ -82,6 +82,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 40,
     probability: 0.15,
     icon: 'Heart',
+    requires: { hasPartner: true },
     choices: [
       {
         id: 'c_marry_three_accounts',
@@ -117,6 +118,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 42,
     probability: 0.16,
     icon: 'Baby',
+    requires: { hasPartner: true },
     choices: [
       {
         id: 'c_baby_smart_used',
@@ -152,6 +154,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 44,
     probability: 0.1,
     icon: 'Home',
+    excludes: { isHomeOwner: true },
     choices: [
       {
         id: 'c_evict_move_smart',
@@ -187,6 +190,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     maxAge: 45,
     probability: 0.1,
     icon: 'Wrench',
+    requires: { isHomeOwner: true },
     choices: [
       {
         id: 'c_roof_instandhaltungsruecklage',
@@ -214,10 +218,47 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     ],
   },
   {
+    id: 'EVT_CAREER_OVERTIME_PROJECT',
+    title: 'Karriere: Großes Projekt mit Überstunden?',
+    description:
+      'Dein Team braucht dich für ein zeitkritisches Kundenprojekt. Überstunden bringen Prämie, belasten aber Freizeit und Gesundheit.',
+    category: 'CAREER',
+    minAge: 22,
+    maxAge: 35,
+    probability: 0.1,
+    icon: 'Briefcase',
+    choices: [
+      {
+        id: 'c_overtime_accept',
+        label: 'Überstunden annehmen (+900 € Prämie, +Stress)',
+        description: 'Du nimmst die Prämie mit und schiebst Freizeit.',
+        costImmediate: 900,
+        happinessDelta: -5,
+        stressDelta: 15,
+        healthDelta: -5,
+        knowledgeDelta: 15,
+        careerDelta: 1,
+        learningTip:
+          'Überstundenprämien sind kurzfristig attraktiv. Langfristig zählen nachhaltige Arbeitszeit und Erholung — sonst drohen Ausfallkosten.',
+      },
+      {
+        id: 'c_overtime_decline',
+        label: 'Ablehnen und Grenzen setzen',
+        description: 'Du schützt Freizeit und Gesundheit.',
+        costImmediate: 0,
+        happinessDelta: 10,
+        stressDelta: -5,
+        knowledgeDelta: 10,
+        learningTip:
+          'Nein sagen ist eine Finanzentscheidung: weniger Geld jetzt, oft mehr Stabilität und weniger Krankheitsrisiko später.',
+      },
+    ],
+  },
+  {
     id: 'EVT_CAREER_LEADERSHIP_STEP',
     title: 'Karrieresprung: Beförderung zur Teamleitung!',
     description:
-      'Deine Leistungen überzeugen die Geschäftsführung. Dir wird die Leitung deines Fachbereichs mit Führungsverantwortung für 6 Mitarbeiter angeboten (+500 €/Monat Netto, höhere Verantwortung).',
+      'Deine Leistungen überzeugen die Geschäftsführung. Dir wird die Leitung deines Fachbereichs mit Führungsverantwortung für 6 Mitarbeiter angeboten. Das kann eine neue Karrierestufe und einen Gehaltssprung von etwa 5 % bringen.',
     category: 'CAREER',
     minAge: 27,
     maxAge: 44,
@@ -226,7 +267,7 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
     choices: [
       {
         id: 'c_leader_accept',
-        label: 'Führungsposition annehmen (+500 €/Mo Gehalt, +15 Stress)',
+        label: 'Führungsposition annehmen (~5 % Gehaltssprung, +15 Stress)',
         description: 'Mehr Gestaltungsspielraum, strategische Verantwortung und dauerhaft höheres Gehalt.',
         costImmediate: 0,
         monthlyCostDelta: 0,
@@ -322,6 +363,43 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
         knowledgeDelta: 15,
         learningTip:
           'Die Europäische Krankenversicherungskarte (EHIC) deckt oft nur unzureichende Notfallbehandlungen in staatlichen Kliniken ab – private Kliniken verlangen Vorkasse.',
+      },
+    ],
+  },
+  {
+    id: 'EVT_TRAVEL_CITY_BREAK',
+    title: 'Kurzreise: Städtetrip am langen Wochenende',
+    description:
+      'Du möchtest für ein verlängertes Wochenende eine spannende Stadt erkunden. Wie planst du die Reise?',
+    category: 'LIFESTYLE',
+    minAge: 18,
+    maxAge: 50,
+    probability: 0.12,
+    icon: 'Map',
+    choices: [
+      {
+        id: 'c_travel_budget_trip',
+        label: 'Budget-Trip mit Bahn und Hostel planen (-450 €)',
+        description:
+          'Du vergleichst Preise, buchst früh und hältst die Reisekosten im Rahmen.',
+        costImmediate: -450,
+        happinessDelta: 20,
+        stressDelta: -5,
+        knowledgeDelta: 15,
+        learningTip:
+          'Reisen werden planbarer, wenn du ein festes Freizeitbudget nutzt und früh Buchungsoptionen vergleichst.',
+      },
+      {
+        id: 'c_travel_luxury_trip',
+        label: 'Komfortreise mit Hotel und Extras gönnen (-1.400 €)',
+        description:
+          'Du buchst zentral, komfortabel und mit Restaurantbesuchen, zahlst dafür aber deutlich mehr.',
+        costImmediate: -1400,
+        happinessDelta: 30,
+        stressDelta: -10,
+        knowledgeDelta: 5,
+        learningTip:
+          'Erlebnisse sind wertvoll, sollten aber nicht den Notgroschen gefährden. Plane größere Reisen mit eigener Sparrate.',
       },
     ],
   },
@@ -539,6 +617,238 @@ export const ALL_LIFE_EVENTS: LifeEvent[] = [
         knowledgeDelta: 10,
         learningTip:
           'Monatliche Fixkosten wie Energie können schwanken. Eine monatliche Sparquote federt Nachzahlungen stressfrei ab.',
+      },
+    ],
+  },
+  {
+    id: 'EVT_MIDLIFE_JOB_CHANGE',
+    title: 'Midlife-Karriere: Jobwechsel oder Spezialisierung?',
+    description:
+      'Mit Mitte 40 merkst du, dass dein aktueller Job fachlich stagniert. Ein anderer Arbeitgeber lockt mit neuen Aufgaben, gleichzeitig könntest du dich intern gezielt weiterqualifizieren.',
+    category: 'CAREER',
+    minAge: 45,
+    maxAge: 55,
+    probability: 0.12,
+    icon: 'Briefcase',
+    requires: { minEmergencyMonths: 3 },
+    choices: [
+      {
+        id: 'c_midlife_change_employer',
+        label: 'Geordnet den Arbeitgeber wechseln (-1.200 € Übergangskosten)',
+        description:
+          'Du nutzt dein Netzwerk, verhandelst bewusst und nimmst kurzfristige Wechselkosten in Kauf.',
+        costImmediate: -1200,
+        happinessDelta: 20,
+        stressDelta: 10,
+        knowledgeDelta: 25,
+        careerDelta: 1,
+        learningTip:
+          'In der Lebensmitte zählt planvolles Wechseln: Rücklagen, klare Gehaltsziele und Vertragsprüfung senken das Risiko eines Karriereschritts.',
+      },
+      {
+        id: 'c_midlife_reskill_internal',
+        label: 'Interne Weiterbildung finanzieren (-850 €)',
+        description:
+          'Du bleibst im Unternehmen, investierst aber in Zertifikate und neue Kompetenzen.',
+        costImmediate: -850,
+        happinessDelta: 10,
+        stressDelta: -5,
+        knowledgeDelta: 30,
+        learningTip:
+          'Weiterbildung schützt vor Einkommensrisiken. Besonders ab 45 lohnt es sich, berufliche Optionen aktiv offenzuhalten.',
+      },
+    ],
+  },
+  {
+    id: 'EVT_PARENT_CARE',
+    title: 'Familie: Ein Elternteil braucht Unterstützung',
+    description:
+      'Ein Elternteil benötigt nach einer Erkrankung regelmäßig Hilfe im Alltag. Du musst Zeit, Pflegeorganisation und finanzielle Beteiligung neu ausbalancieren.',
+    category: 'FAMILY',
+    minAge: 48,
+    maxAge: 60,
+    probability: 0.13,
+    icon: 'HeartHandshake',
+    requires: { hasPartner: true, minEmergencyMonths: 2 },
+    choices: [
+      {
+        id: 'c_parent_care_share_costs',
+        label: 'Pflegedienst mit Geschwistern teilen (+180 €/Mo Kosten)',
+        description:
+          'Professionelle Hilfe entlastet dich zeitlich, erhöht aber deine laufenden Ausgaben.',
+        costImmediate: 0,
+        monthlyCostDelta: 180,
+        happinessDelta: 5,
+        stressDelta: 10,
+        knowledgeDelta: 25,
+        learningTip:
+          'Pflegekosten sollten früh gemeinsam geplant werden. Pflegegrad, Entlastungsbetrag und Familienabsprachen verhindern finanzielle Überforderung.',
+      },
+      {
+        id: 'c_parent_care_organize_benefits',
+        label: 'Pflegegrad, Beratung und Hilfen systematisch beantragen',
+        description:
+          'Du investierst Zeit in Beratung, Anträge und Organisation, bevor du eigene Zahlungen erhöhst.',
+        costImmediate: 0,
+        happinessDelta: 5,
+        stressDelta: 15,
+        knowledgeDelta: 30,
+        learningTip:
+          'Pflegeberatung ist kostenlos. Wer Leistungen kennt und dokumentiert, kann private Zuzahlungen deutlich reduzieren.',
+      },
+    ],
+  },
+  {
+    id: 'EVT_INHERITANCE_MODEST',
+    title: 'Unerwartetes Erbe: 12.000 € aus der Familie',
+    description:
+      'Nach einem Trauerfall erhältst du ein moderates Erbe. Das Geld kann Schulden senken, Rücklagen stärken oder langfristig investiert werden.',
+    category: 'FINANCIAL',
+    minAge: 50,
+    maxAge: 65,
+    probability: 0.08,
+    icon: 'Landmark',
+    choices: [
+      {
+        id: 'c_inheritance_reduce_risk',
+        label: 'Schulden tilgen und Notgroschen auffüllen (+12.000 €)',
+        description:
+          'Du parkst das Erbe zunächst sicher und nutzt es für finanzielle Stabilität.',
+        costImmediate: 12000,
+        happinessDelta: 15,
+        stressDelta: -20,
+        knowledgeDelta: 20,
+        learningTip:
+          'Ein Erbe ist kein regelmäßiges Einkommen. Erst Schulden und Notgroschen prüfen, dann über langfristige Anlage entscheiden.',
+      },
+      {
+        id: 'c_inheritance_invest_longterm',
+        label: 'Breit gestreut für den Ruhestand investieren (+12.000 €)',
+        description:
+          'Du legst das Geld langfristig an und lässt dir Zeit statt impulsiv zu konsumieren.',
+        costImmediate: 12000,
+        happinessDelta: 10,
+        stressDelta: -10,
+        knowledgeDelta: 25,
+        learningTip:
+          'Auch mit 50+ kann ein Anlagehorizont von 10 bis 20 Jahren bestehen. Breite Streuung reduziert Einzelrisiken.',
+      },
+    ],
+  },
+  {
+    id: 'EVT_HEALTH_CHECK_50',
+    title: 'Gesundheits-Check ab 50: Vorsorge ernst nehmen',
+    description:
+      'Deine Krankenkasse erinnert dich an wichtige Vorsorgeuntersuchungen. Du kannst sie wahrnehmen und Gewohnheiten anpassen oder den Termin weiter aufschieben.',
+    category: 'HEALTH',
+    minAge: 49,
+    maxAge: 55,
+    probability: 0.16,
+    icon: 'Stethoscope',
+    choices: [
+      {
+        id: 'c_health_check_prevention',
+        label: 'Vorsorge wahrnehmen und Routinen verbessern (-120 €)',
+        description:
+          'Du nimmst dir Zeit für Check-up, Bewegung und Ernährung. Kleine Eigenanteile zahlst du selbst.',
+        costImmediate: -120,
+        healthDelta: 15,
+        happinessDelta: 5,
+        stressDelta: -5,
+        knowledgeDelta: 20,
+        learningTip:
+          'Prävention ist die günstigste Gesundheitsstrategie. Früherkennung verhindert oft hohe Folgekosten und lange Ausfälle.',
+      },
+      {
+        id: 'c_health_check_postpone',
+        label: 'Auf später verschieben',
+        description:
+          'Du fühlst dich fit und priorisierst Arbeit und Alltag. Der Check bleibt auf der Liste.',
+        costImmediate: 0,
+        healthDelta: -5,
+        happinessDelta: 0,
+        stressDelta: 5,
+        knowledgeDelta: 5,
+        learningTip:
+          'Gesundheitsrisiken steigen oft unbemerkt. Regelmäßige Checks schaffen Klarheit, bevor Beschwerden den Alltag bestimmen.',
+      },
+    ],
+  },
+  {
+    id: 'EVT_PRE_RETIREMENT_BAV',
+    title: 'Vorruhestand: Betriebliche Altersvorsorge prüfen',
+    description:
+      'Dein Arbeitgeber bietet eine aktualisierte betriebliche Altersvorsorge mit Zuschuss an. Kurz vor dem Ruhestand musst du Kosten, Förderung und Flexibilität abwägen.',
+    category: 'PENSION_TAX',
+    minAge: 55,
+    maxAge: 64,
+    probability: 0.14,
+    icon: 'PiggyBank',
+    requires: { minEmergencyMonths: 3 },
+    choices: [
+      {
+        id: 'c_bav_use_employer_match',
+        label: 'Arbeitgeberzuschuss nutzen (+150 €/Mo Sparbeitrag)',
+        description:
+          'Du wandelst Gehalt um und sicherst dir den Zuschuss, akzeptierst aber weniger verfügbares Monatsbudget.',
+        costImmediate: 0,
+        monthlyCostDelta: 150,
+        happinessDelta: 5,
+        stressDelta: -5,
+        knowledgeDelta: 30,
+        learningTip:
+          'Bei der bAV zählen Zuschuss, Kosten und spätere Besteuerung. Ein hoher Arbeitgeberanteil kann den Vertrag attraktiv machen.',
+      },
+      {
+        id: 'c_bav_compare_private_plan',
+        label: 'Erst Rentenlücke berechnen und Alternativen vergleichen',
+        description:
+          'Du prüfst gesetzliche Rente, bestehende Verträge und ETF-Sparplan, bevor du unterschreibst.',
+        costImmediate: 0,
+        happinessDelta: 0,
+        stressDelta: 0,
+        knowledgeDelta: 35,
+        learningTip:
+          'Eine Rentenlückenrechnung verhindert Bauchentscheidungen. Gute Altersvorsorge beginnt mit Zahlen statt Produktversprechen.',
+      },
+    ],
+  },
+  {
+    id: 'EVT_RETIREMENT_TRANSITION',
+    title: 'Übergang in den Ruhestand: Budget neu planen',
+    description:
+      'Der Rentenbeginn rückt konkret näher. Du entscheidest, wie du den Übergang organisierst: sofort kürzertreten, weiterarbeiten oder Ausgaben anpassen.',
+    category: 'PENSION_TAX',
+    minAge: 65,
+    maxAge: 67,
+    probability: 0.6,
+    icon: 'CalendarCheck',
+    requires: { minEmergencyMonths: 3 },
+    choices: [
+      {
+        id: 'c_retirement_budget_reset',
+        label: 'Ruhestandsbudget erstellen und Ausgaben anpassen',
+        description:
+          'Du rechnest Renten, Versicherungen, Wohnen und Freizeit neu durch und senkst unnötige Fixkosten.',
+        costImmediate: 0,
+        monthlyCostDelta: -250,
+        happinessDelta: 10,
+        stressDelta: -20,
+        knowledgeDelta: 35,
+        learningTip:
+          'Der Ruhestand ist ein Einkommenswechsel. Wer Fixkosten früh prüft, vermeidet späteren Druck auf Ersparnisse.',
+      },
+      {
+        id: 'c_retirement_phased_work',
+        label: 'Teilzeit weiterarbeiten und Übergang strecken (+900 €)',
+        description:
+          'Du bleibst einige Monate beruflich aktiv, hältst Struktur und erhöhst die Liquidität zum Start.',
+        costImmediate: 900,
+        happinessDelta: 5,
+        stressDelta: 5,
+        knowledgeDelta: 20,
+        learningTip:
+          'Ein gleitender Übergang kann Finanzen und Alltag stabilisieren. Prüfe Hinzuverdienstgrenzen, Steuern und Krankenversicherung.',
       },
     ],
   },

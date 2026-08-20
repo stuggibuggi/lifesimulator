@@ -21,6 +21,7 @@
 ## 4. Classroom acceptance
 - [ ] Teacher register → verification mail → login
 - [ ] Forgot password → reset mail → new password → login
-- [ ] Create room → student join with alias
-- [ ] Cloud save across devices
+- [ ] Create room → student join with alias + 4–6 digit PIN
+- [ ] Gerät wechseln: same room + alias + PIN loads cloud save without copying localStorage
+- [ ] Wrong PIN blocks alias resume
 - [ ] Dashboard shows live aggregates; classroom dropdown switches rooms
