@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS teachers (
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   display_name VARCHAR(120) NULL,
+  is_admin TINYINT(1) NOT NULL DEFAULT 0,
   email_verified_at DATETIME NULL,
   verification_token_hash VARCHAR(64) NULL,
   verification_expires_at DATETIME NULL,
@@ -59,10 +60,48 @@ CREATE TABLE IF NOT EXISTS evaluations (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_eval_run FOREIGN KEY (game_run_id) REFERENCES game_runs(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS content_events (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  event_id VARCHAR(64) NOT NULL UNIQUE,
+  body_json LONGTEXT NOT NULL,
+  status ENUM('draft','published') NOT NULL DEFAULT 'draft',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS content_scenarios (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  scenario_id VARCHAR(64) NOT NULL UNIQUE,
+  body_json LONGTEXT NOT NULL,
+  status ENUM('draft','published') NOT NULL DEFAULT 'draft',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS content_versions (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  version INT NOT NULL UNIQUE,
+  content_hash VARCHAR(64) NOT NULL,
+  published_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  published_by_teacher_id INT UNSIGNED NULL,
+  CONSTRAINT fk_content_versions_teacher FOREIGN KEY (published_by_teacher_id) REFERENCES teachers(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS classroom_tip_overrides (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  classroom_id INT UNSIGNED NOT NULL,
+  event_id VARCHAR(64) NOT NULL,
+  tip_text TEXT NOT NULL,
+  teacher_id INT UNSIGNED NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_tip_overrides_classroom FOREIGN KEY (classroom_id) REFERENCES classrooms(id) ON DELETE CASCADE,
+  CONSTRAINT fk_tip_overrides_teacher FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_classroom_event_tip (classroom_id, event_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 `;
 
 /** Safe ALTERs for existing Plesk DBs created before email-auth columns. */
 const ALTERS = [
+  'ALTER TABLE teachers ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0',
   'ALTER TABLE teachers ADD COLUMN email_verified_at DATETIME NULL',
   'ALTER TABLE teachers ADD COLUMN verification_token_hash VARCHAR(64) NULL',
   'ALTER TABLE teachers ADD COLUMN verification_expires_at DATETIME NULL',
