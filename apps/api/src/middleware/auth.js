@@ -5,7 +5,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-secret';
 
 export function signTeacherToken(teacher) {
   return jwt.sign(
-    { role: 'teacher', teacherId: teacher.id, email: teacher.email, isAdmin: Boolean(teacher.isAdmin) },
+    {
+      role: 'teacher',
+      teacherId: teacher.id,
+      email: teacher.email,
+      isAdmin: Boolean(teacher.isAdmin ?? teacher.is_admin),
+    },
     JWT_SECRET,
     { expiresIn: '7d' }
   );

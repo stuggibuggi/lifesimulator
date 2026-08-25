@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS teachers (
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   display_name VARCHAR(120) NULL,
+  oidc_sub VARCHAR(255) NULL UNIQUE,
   is_admin TINYINT(1) NOT NULL DEFAULT 0,
   email_verified_at DATETIME NULL,
   verification_token_hash VARCHAR(64) NULL,
@@ -102,6 +103,8 @@ CREATE TABLE IF NOT EXISTS classroom_tip_overrides (
 /** Safe ALTERs for existing Plesk DBs created before email-auth columns. */
 const ALTERS = [
   'ALTER TABLE teachers ADD COLUMN is_admin TINYINT(1) NOT NULL DEFAULT 0',
+  'ALTER TABLE teachers ADD COLUMN oidc_sub VARCHAR(255) NULL',
+  'ALTER TABLE teachers ADD UNIQUE KEY uq_teachers_oidc_sub (oidc_sub)',
   'ALTER TABLE teachers ADD COLUMN email_verified_at DATETIME NULL',
   'ALTER TABLE teachers ADD COLUMN verification_token_hash VARCHAR(64) NULL',
   'ALTER TABLE teachers ADD COLUMN verification_expires_at DATETIME NULL',
@@ -124,15 +127,21 @@ async function migrate() {
       try {
         await conn.query(alter);
       } catch (err) {
-        // Duplicate column = already migrated
-        if (err && (err.errno === 1060 || err.code === 'ER_DUP_FIELDNAME')) {
+        // Duplicate column/key = already migrated
+        if (
+          err &&
+          (err.errno === 1060 ||
+            err.errno === 1061 ||
+            err.code === 'ER_DUP_FIELDNAME' ||
+            err.code === 'ER_DUP_KEYNAME')
+        ) {
           continue;
         }
         throw err;
       }
     }
 
-    console.log('MariaDB schema ready (incl. teacher email-auth and student resume columns).');
+    console.log('MariaDB schema ready (incl. teacher email-auth, OIDC SSO, and student resume columns).');
   } finally {
     conn.release();
     await pool.end();

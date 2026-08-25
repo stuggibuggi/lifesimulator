@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS teachers (
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   display_name VARCHAR(120) NULL,
+  oidc_sub VARCHAR(255) NULL UNIQUE,
   is_admin TINYINT(1) NOT NULL DEFAULT 0,
   email_verified_at DATETIME NULL,
   verification_token_hash VARCHAR(64) NULL,

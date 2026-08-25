@@ -160,6 +160,10 @@ export function setTeacherProfile(profile: TeacherProfile | null) {
   }
 }
 
+export function getTeacherOidcStartUrl(): string {
+  return `${getApiBase()}/api/auth/oidc/start`;
+}
+
 export function getStudentSession(): StudentSession | null {
   try {
     const raw = localStorage.getItem(STUDENT_SESSION_KEY);

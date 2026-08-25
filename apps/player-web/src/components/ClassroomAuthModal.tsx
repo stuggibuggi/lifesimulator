@@ -15,6 +15,7 @@ import {
   teacherResetPassword,
   teacherVerify,
   fetchTeacherMe,
+  getTeacherOidcStartUrl,
   getTeacherProfile,
   getTeacherToken,
   setTeacherToken,
@@ -50,6 +51,8 @@ function clearAuthQueryParams() {
     const url = new URL(window.location.href);
     url.searchParams.delete('verifyTeacher');
     url.searchParams.delete('resetTeacher');
+    url.searchParams.delete('teacherSsoToken');
+    url.searchParams.delete('teacherSsoError');
     window.history.replaceState({}, '', url.pathname + url.hash);
   } catch {
     // ignore
@@ -102,6 +105,36 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
 
     const verifyToken = readQueryParam('verifyTeacher');
     const reset = readQueryParam('resetTeacher');
+    const teacherSsoToken = readQueryParam('teacherSsoToken');
+    const teacherSsoError = readQueryParam('teacherSsoError');
+
+    if (teacherSsoError) {
+      clearAuthQueryParams();
+      setError(teacherSsoError);
+      setTeacherView('AUTH');
+      return;
+    }
+
+    if (teacherSsoToken) {
+      setBusy(true);
+      setTeacherToken(teacherSsoToken);
+      fetchTeacherMe()
+        .then((profile) => {
+          clearAuthQueryParams();
+          setTeacherProfileState(profile);
+          setTeacherReady(true);
+          setTeacherView('LOGGED_IN');
+          setInfo('Schul-SSO erfolgreich. Du bist angemeldet.');
+          sound.playFanfare();
+        })
+        .catch((err) => {
+          setTeacherToken(null);
+          setError(err instanceof Error ? err.message : 'Schul-SSO-Anmeldung fehlgeschlagen.');
+          setTeacherView('AUTH');
+        })
+        .finally(() => setBusy(false));
+      return;
+    }
 
     if (verifyToken) {
       setBusy(true);
@@ -213,6 +246,12 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleTeacherOidcStart = () => {
+    setError(null);
+    setInfo(null);
+    window.location.assign(getTeacherOidcStartUrl());
   };
 
   const handleForgot = async (e: React.FormEvent) => {
@@ -456,6 +495,16 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
             >
               {busy ? 'Bitte warten…' : isRegister ? 'Konto anlegen' : 'Anmelden'}
             </button>
+            {!isRegister && (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={handleTeacherOidcStart}
+                className="w-full py-3 rounded-2xl bg-gray-900 hover:bg-gray-800 text-white font-extrabold disabled:opacity-50"
+              >
+                Mit Schul-SSO anmelden
+              </button>
+            )}
             {!isRegister && (
               <button
                 type="button"
