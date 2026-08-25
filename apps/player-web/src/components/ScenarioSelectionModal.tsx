@@ -16,8 +16,9 @@ import {
 } from 'lucide-react';
 
 export const ScenarioSelectionModal: React.FC = () => {
-  const { closeModal, startScenarioGame } = useGameStore();
+  const { closeModal, contentScenarios, startScenarioGame } = useGameStore();
   const studentSession = getStudentSession();
+  const scenarios = contentScenarios.length ? contentScenarios : EDUCATIONAL_SCENARIOS;
 
   const getScenarioIcon = (iconName: string) => {
     switch (iconName) {
@@ -47,7 +48,7 @@ export const ScenarioSelectionModal: React.FC = () => {
       maxWidthClass="max-w-4xl"
     >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {EDUCATIONAL_SCENARIOS.map((sc) => (
+        {scenarios.map((sc) => (
           <div
             key={sc.id}
             className="p-6 rounded-3xl bg-gray-50/80 hover:bg-white border-2 border-gray-200 hover:border-terracotta-400 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"

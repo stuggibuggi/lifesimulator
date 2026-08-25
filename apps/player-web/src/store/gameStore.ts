@@ -7,6 +7,7 @@ import {
   GameState,
   HousingOption,
   InsuranceContract,
+  LifeEvent,
   LifeGoal,
   MobilityOption,
   RelationshipStatus,
@@ -51,7 +52,7 @@ import {
 } from '@goal/game-content';
 import { sound } from '../audio/soundSynth';
 import confetti from 'canvas-confetti';
-import { getStudentSession, saveCloudRun } from '../api/client';
+import { fetchClassroomTipOverrides, fetchPublishedContent, getStudentSession, saveCloudRun } from '../api/client';
 import { evaluateLifeRun } from '@goal/scoring-engine';
 
 export type GamePhase =
@@ -78,6 +79,7 @@ export type ActiveModal =
   | 'SCENARIO_SELECTION_MODAL'
   | 'PHONE_MODAL'
   | 'TEACHER_AUTH_MODAL'
+  | 'CONTENT_ADMIN_MODAL'
   | 'JOIN_CLASS_MODAL'
   | null;
 
@@ -98,6 +100,9 @@ interface GameStoreState {
   tempCharacter: Character | null;
   tempGoals: LifeGoal[];
   selectedScenario: EducationalScenario | null;
+  contentEvents: LifeEvent[];
+  contentScenarios: EducationalScenario[];
+  classroomTipOverrides: Record<string, string>;
   prng: SeededRandom | null;
   eventChoiceFeedback: EventChoiceFeedback | null;
   pendingPhoneTipCardId: string | null;
@@ -108,6 +113,7 @@ interface GameStoreState {
 
   // Actions
   startNewGame: () => void;
+  loadPublishedContent: () => Promise<void>;
   startScenarioGame: (scenario: EducationalScenario, characterName?: string) => void;
   setTempCharacter: (char: Character) => void;
   confirmCharacterAndGoToGoals: () => void;
@@ -167,7 +173,8 @@ function createEventChoiceFeedback(
   updatedState: GameState,
   eventId: string,
   eventTitle: string,
-  choice: EventChoice
+  choice: EventChoice,
+  overrideTip?: string
 ): EventChoiceFeedback {
   const appliedChoice = [...updatedState.pastEvents]
     .reverse()
@@ -176,7 +183,7 @@ function createEventChoiceFeedback(
   return {
     eventTitle,
     choiceLabel: choice.label,
-    learningTip: choice.learningTip,
+    learningTip: overrideTip || choice.learningTip,
     financialImpact: appliedChoice?.financialImpact ?? choice.costImmediate,
     phoneTipCardId: getLearningCardForLifeEvent(eventId)?.id,
   };
@@ -309,6 +316,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   tempCharacter: null,
   tempGoals: [],
   selectedScenario: null,
+  contentEvents: ALL_LIFE_EVENTS,
+  contentScenarios: EDUCATIONAL_SCENARIOS,
+  classroomTipOverrides: {},
   prng: null,
   eventChoiceFeedback: null,
   pendingPhoneTipCardId: null,
@@ -318,6 +328,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   cloudSaveAt: undefined,
 
   startNewGame: () => {
+    const scenarios = get().contentScenarios.length ? get().contentScenarios : EDUCATIONAL_SCENARIOS;
     sound.playPop();
     set({
       gamePhase: 'CHARACTER_CREATION',
@@ -328,7 +339,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         bio: 'Möchte eigene Ziele verwirklichen und klug mit Geld umgehen.',
       },
       tempGoals: [],
-      selectedScenario: EDUCATIONAL_SCENARIOS[0],
+      selectedScenario: scenarios[0],
       activeModal: null,
       eventChoiceFeedback: null,
       pendingPhoneTipCardId: null,
@@ -337,6 +348,41 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       cloudSaveMessage: undefined,
       cloudSaveAt: undefined,
     });
+  },
+
+  loadPublishedContent: async () => {
+    const fallback = {
+      contentEvents: ALL_LIFE_EVENTS,
+      contentScenarios: EDUCATIONAL_SCENARIOS,
+      classroomTipOverrides: {},
+    };
+
+    try {
+      const bundle = await fetchPublishedContent();
+      const session = getStudentSession();
+      let classroomTipOverrides: Record<string, string> = {};
+
+      if (session?.classroomId && session.sessionToken) {
+        try {
+          const data = await fetchClassroomTipOverrides(session.classroomId, {
+            studentToken: session.sessionToken,
+          });
+          classroomTipOverrides = Object.fromEntries(
+            (data.tipOverrides || []).map((override) => [override.eventId, override.tipText])
+          );
+        } catch {
+          classroomTipOverrides = {};
+        }
+      }
+
+      set({
+        contentEvents: bundle.events?.length ? bundle.events : ALL_LIFE_EVENTS,
+        contentScenarios: bundle.scenarios?.length ? bundle.scenarios : EDUCATIONAL_SCENARIOS,
+        classroomTipOverrides,
+      });
+    } catch {
+      set(fallback);
+    }
   },
 
   startScenarioGame: (scenario, characterName) => {
@@ -551,7 +597,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (!gameState || gameState.isGameOver) return;
 
     const rng = prng || new SeededRandom(gameState.seed);
-    const result = stepSimulationMonth(gameState, ALL_LIFE_EVENTS, rng);
+    const events = get().contentEvents.length ? get().contentEvents : ALL_LIFE_EVENTS;
+    const result = stepSimulationMonth(gameState, events, rng);
 
     if (result.nextState.bankAccount.giroBalance < 0 && gameState.bankAccount.giroBalance >= 0) {
       sound.playWarning();
@@ -593,7 +640,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     for (let i = 0; i < 12; i++) {
       if (state.isGameOver) break;
-      const res = stepSimulationMonth(state, ALL_LIFE_EVENTS, rng);
+      const events = get().contentEvents.length ? get().contentEvents : ALL_LIFE_EVENTS;
+      const res = stepSimulationMonth(state, events, rng);
       state = res.nextState;
       if (res.triggeredEvent) {
         sound.playEventAlert();
@@ -637,7 +685,13 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     sound.playPop();
     const event = gameState.activeEvent;
     const updatedState = applyEventChoice(gameState, event, choice);
-    const eventChoiceFeedback = createEventChoiceFeedback(updatedState, event.id, event.title, choice);
+    const eventChoiceFeedback = createEventChoiceFeedback(
+      updatedState,
+      event.id,
+      event.title,
+      choice,
+      get().classroomTipOverrides[event.id]
+    );
 
     const newAchieved = updatedState.goals.some(
       (g, idx) => g.isAchieved && !gameState.goals[idx].isAchieved
@@ -981,6 +1035,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       tempCharacter: null,
       tempGoals: [],
       selectedScenario: null,
+      contentEvents: ALL_LIFE_EVENTS,
+      contentScenarios: EDUCATIONAL_SCENARIOS,
+      classroomTipOverrides: {},
       prng: null,
       eventChoiceFeedback: null,
       pendingPhoneTipCardId: null,

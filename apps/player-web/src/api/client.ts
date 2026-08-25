@@ -1,4 +1,4 @@
-import type { CertificateData } from '@goal/shared-types';
+import type { CertificateData, EducationalScenario, LifeEvent } from '@goal/shared-types';
 
 function resolveApiBase(): string {
   const fromEnv =
@@ -19,6 +19,7 @@ function resolveApiBase(): string {
 }
 
 const TEACHER_TOKEN_KEY = 'GOAL_TEACHER_TOKEN';
+const TEACHER_PROFILE_KEY = 'GOAL_TEACHER_PROFILE';
 const STUDENT_SESSION_KEY = 'GOAL_STUDENT_SESSION';
 const ACTIVE_CLASSROOM_KEY = 'GOAL_ACTIVE_CLASSROOM_ID';
 
@@ -37,7 +38,10 @@ export function getTeacherToken(): string | null {
 export function setTeacherToken(token: string | null) {
   try {
     if (token) localStorage.setItem(TEACHER_TOKEN_KEY, token);
-    else localStorage.removeItem(TEACHER_TOKEN_KEY);
+    else {
+      localStorage.removeItem(TEACHER_TOKEN_KEY);
+      localStorage.removeItem(TEACHER_PROFILE_KEY);
+    }
   } catch {
     // ignore
   }
@@ -71,6 +75,26 @@ export type StudentSession = {
   alias: string;
   scenarioId?: string | null;
   characterName?: string;
+};
+
+export type TeacherProfile = {
+  id: number;
+  email: string;
+  displayName?: string | null;
+  isAdmin?: boolean;
+};
+
+export type PublishedContentBundle = {
+  version: number;
+  hash: string;
+  events: LifeEvent[];
+  scenarios: EducationalScenario[];
+};
+
+export type ClassroomTipOverride = {
+  eventId: string;
+  tipText: string;
+  updatedAt?: string | null;
 };
 
 export type ClassroomSummaryMember = {
@@ -109,6 +133,24 @@ export type ClassroomCertificateResponse = {
   certificate: CertificateData | null;
   dimensions?: unknown;
 };
+
+export function getTeacherProfile(): TeacherProfile | null {
+  try {
+    const raw = localStorage.getItem(TEACHER_PROFILE_KEY);
+    return raw ? (JSON.parse(raw) as TeacherProfile) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setTeacherProfile(profile: TeacherProfile | null) {
+  try {
+    if (profile) localStorage.setItem(TEACHER_PROFILE_KEY, JSON.stringify(profile));
+    else localStorage.removeItem(TEACHER_PROFILE_KEY);
+  } catch {
+    // ignore
+  }
+}
 
 export function getStudentSession(): StudentSession | null {
   try {
@@ -163,6 +205,7 @@ export async function teacherVerify(token: string) {
     body: JSON.stringify({ token }),
   });
   if (data.token) setTeacherToken(data.token);
+  if (data.teacher) setTeacherProfile(data.teacher);
   return data;
 }
 
@@ -172,6 +215,7 @@ export async function teacherLogin(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   });
   setTeacherToken(data.token);
+  if (data.teacher) setTeacherProfile(data.teacher);
   return data;
 }
 
@@ -205,7 +249,18 @@ export async function deleteTeacherMe(password: string) {
     body: JSON.stringify({ password }),
   });
   setTeacherToken(null);
+  setTeacherProfile(null);
   setActiveClassroomId(null);
+}
+
+export async function fetchTeacherMe(): Promise<TeacherProfile> {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+  const data = await apiFetch('/api/auth/teacher/me', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (data.teacher) setTeacherProfile(data.teacher);
+  return data.teacher;
 }
 
 export async function createClassroom(title: string, scenarioId?: string, expiresAt?: string | null) {
@@ -276,6 +331,73 @@ export async function fetchCertificate(
   const token = getTeacherToken();
   if (!token) throw new Error('Nicht als Lehrer angemeldet.');
   return apiFetch(`/api/classrooms/${classroomId}/certificate/${runId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function fetchPublishedContent(): Promise<PublishedContentBundle> {
+  return apiFetch('/api/content/published');
+}
+
+export async function fetchAdminContentEvents() {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+  return apiFetch('/api/content/admin/events', {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function saveAdminContentEvent(eventId: string, body: LifeEvent, status: 'draft' | 'published' = 'draft') {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+  return apiFetch(`/api/content/admin/events/${encodeURIComponent(eventId)}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ body, status }),
+  });
+}
+
+export async function publishAdminContent() {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+  return apiFetch('/api/content/admin/publish', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function fetchClassroomTipOverrides(
+  classroomId: number,
+  options?: { studentToken?: string }
+): Promise<{ tipOverrides: ClassroomTipOverride[] }> {
+  const token = options?.studentToken ? null : getTeacherToken();
+  if (!token && !options?.studentToken) throw new Error('Nicht angemeldet.');
+  return apiFetch(`/api/classrooms/${classroomId}/tip-overrides`, {
+    headers: options?.studentToken
+      ? { 'X-Student-Token': options.studentToken }
+      : { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function saveClassroomTipOverride(
+  classroomId: number,
+  eventId: string,
+  tipText: string
+) {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+  return apiFetch(`/api/classrooms/${classroomId}/tip-overrides/${encodeURIComponent(eventId)}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ tipText }),
+  });
+}
+
+export async function deleteClassroomTipOverride(classroomId: number, eventId: string) {
+  const token = getTeacherToken();
+  if (!token) throw new Error('Nicht als Lehrer angemeldet.');
+  await apiFetch(`/api/classrooms/${classroomId}/tip-overrides/${encodeURIComponent(eventId)}`, {
+    method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
 }
