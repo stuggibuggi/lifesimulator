@@ -24,9 +24,14 @@ import { TransactionsModal } from './components/TransactionsModal';
 import { PhoneModal } from './components/PhoneModal';
 import { EvaluationView } from './components/EvaluationView';
 import { ClassroomAuthModal } from './components/ClassroomAuthModal';
+import { ContentAdminModal } from './components/ContentAdminModal';
 
 export const App: React.FC = () => {
-  const { gamePhase, gameState, activeModal, eventChoiceFeedback, setActiveModal, closeModal } = useGameStore();
+  const { gamePhase, gameState, activeModal, eventChoiceFeedback, setActiveModal, closeModal, loadPublishedContent } = useGameStore();
+
+  useEffect(() => {
+    void loadPublishedContent();
+  }, [loadPublishedContent]);
 
   useEffect(() => {
     try {
@@ -51,6 +56,7 @@ export const App: React.FC = () => {
       {activeModal === 'TEACHER_AUTH_MODAL' && (
         <ClassroomAuthModal mode="TEACHER" onClose={closeModal} />
       )}
+      {activeModal === 'CONTENT_ADMIN_MODAL' && <ContentAdminModal />}
 
       {/* 2. Character Setup Screen */}
       {gamePhase === 'CHARACTER_CREATION' && <CharacterSetupScreen />}

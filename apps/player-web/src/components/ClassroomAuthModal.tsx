@@ -14,6 +14,8 @@ import {
   teacherResendVerification,
   teacherResetPassword,
   teacherVerify,
+  fetchTeacherMe,
+  getTeacherProfile,
   getTeacherToken,
   setTeacherToken,
   setActiveClassroomId,
@@ -65,7 +67,8 @@ function getDefaultExpiryDate(): string {
 }
 
 export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, onClose }) => {
-  const { importSaveState, setActiveModal, startScenarioGame } = useGameStore();
+  const { contentScenarios, importSaveState, setActiveModal, startScenarioGame } = useGameStore();
+  const scenarios = contentScenarios.length ? contentScenarios : EDUCATIONAL_SCENARIOS;
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,6 +88,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
   const [selectedScenarioId, setSelectedScenarioId] = useState(EDUCATIONAL_SCENARIOS[0]?.id ?? '');
   const [expiresDate, setExpiresDate] = useState(getDefaultExpiryDate);
   const [teacherReady, setTeacherReady] = useState(Boolean(getTeacherToken()));
+  const [teacherProfile, setTeacherProfileState] = useState(getTeacherProfile());
   const [teacherView, setTeacherView] = useState<TeacherView>(
     getTeacherToken() ? 'LOGGED_IN' : 'AUTH'
   );
@@ -104,6 +108,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
       teacherVerify(verifyToken)
         .then(() => {
           clearAuthQueryParams();
+          setTeacherProfileState(getTeacherProfile());
           setTeacherReady(true);
           setTeacherView('LOGGED_IN');
           setInfo('E-Mail bestätigt. Du bist angemeldet.');
@@ -123,6 +128,15 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
       clearAuthQueryParams();
     }
   }, [mode]);
+
+  useEffect(() => {
+    if (mode !== 'TEACHER' || !getTeacherToken()) return;
+    fetchTeacherMe()
+      .then((profile) => setTeacherProfileState(profile))
+      .catch(() => {
+        // Existing token may be stale; normal actions will surface auth errors.
+      });
+  }, [mode, teacherReady]);
 
   useEffect(() => {
     if (mode !== 'JOIN') return;
@@ -189,6 +203,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
         sound.playPop();
       } else {
         await teacherLogin(email, password);
+        setTeacherProfileState(getTeacherProfile());
         setTeacherReady(true);
         setTeacherView('LOGGED_IN');
         sound.playPop();
@@ -258,6 +273,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
 
   const handleLogout = () => {
     setTeacherToken(null);
+    setTeacherProfileState(null);
     setCreatedCode(null);
     setCreatedScenarioName(null);
     setTeacherReady(false);
@@ -588,7 +604,7 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
                 onChange={(e) => setSelectedScenarioId(e.target.value)}
                 className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-gray-200 font-extrabold bg-white"
               >
-                {EDUCATIONAL_SCENARIOS.map((scenario) => (
+                {scenarios.map((scenario) => (
                   <option key={scenario.id} value={scenario.id}>
                     {scenario.title}
                   </option>
@@ -643,6 +659,18 @@ export const ClassroomAuthModal: React.FC<ClassroomAuthModalProps> = ({ mode, on
             >
               Zum Klassen-Dashboard
             </button>
+            {teacherProfile?.isAdmin && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  setActiveModal('CONTENT_ADMIN_MODAL');
+                }}
+                className="w-full py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs"
+              >
+                Content verwalten
+              </button>
+            )}
             <button type="button" onClick={handleLogout} className="text-xs text-gray-500 underline">
               Abmelden
             </button>
