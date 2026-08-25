@@ -6,15 +6,19 @@ import { Download, Printer } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   deleteClassroom,
+  deleteClassroomTipOverride,
   downloadClassroomCsv,
   fetchCertificate,
+  fetchClassroomTipOverrides,
   fetchClassroomSummary,
   getActiveClassroomId,
   getStudentSession,
   getTeacherToken,
   listMyClassrooms,
+  saveClassroomTipOverride,
   setActiveClassroomId,
 } from '../api/client';
+import type { ClassroomTipOverride } from '../api/client';
 import type { ClassroomCertificateResponse } from '../api/client';
 import { getEducationalScenarioTitle } from './ClassroomAuthModal.helpers';
 import {
@@ -41,7 +45,7 @@ function makeClassroomJoinUrl(roomCode: string): string {
 }
 
 export const ClassroomModal: React.FC = () => {
-  const { gameState, closeModal } = useGameStore();
+  const { contentEvents, gameState, closeModal } = useGameStore();
   const [activeTab, setActiveTab] = useState<'CLASS' | 'CERTIFICATE'>('CLASS');
   const [classrooms, setClassrooms] = useState<ClassroomListItem[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(getActiveClassroomId());
@@ -62,7 +66,11 @@ export const ClassroomModal: React.FC = () => {
   );
   const [certificateRunIdLoading, setCertificateRunIdLoading] = useState<number | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [tipOverrides, setTipOverrides] = useState<ClassroomTipOverride[]>([]);
+  const [selectedTipEventId, setSelectedTipEventId] = useState('');
+  const [tipOverrideText, setTipOverrideText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [savingTipOverride, setSavingTipOverride] = useState(false);
   const [deletingClassroomId, setDeletingClassroomId] = useState<number | null>(null);
   const [exportingCsv, setExportingCsv] = useState(false);
   const studentSession = getStudentSession();
@@ -142,6 +150,25 @@ export const ClassroomModal: React.FC = () => {
     return () => window.clearInterval(intervalId);
   }, [selectedId, loadSummary]);
 
+  const loadTipOverrides = useCallback(async (classroomId: number) => {
+    if (!getTeacherToken()) return;
+    try {
+      const data = await fetchClassroomTipOverrides(classroomId);
+      const rows = data.tipOverrides || [];
+      setTipOverrides(rows);
+      const eventId = selectedTipEventId || contentEvents[0]?.id || '';
+      setSelectedTipEventId(eventId);
+      setTipOverrideText(rows.find((override) => override.eventId === eventId)?.tipText || '');
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Tipps konnten nicht geladen werden.');
+    }
+  }, [contentEvents, selectedTipEventId]);
+
+  useEffect(() => {
+    if (!getTeacherToken() || selectedId == null) return;
+    void loadTipOverrides(selectedId);
+  }, [selectedId, loadTipOverrides]);
+
   if (!gameState) return null;
 
   const evaluation = evaluateLifeRun(gameState);
@@ -149,6 +176,8 @@ export const ClassroomModal: React.FC = () => {
   const certificateToShow = loadedCertificate?.certificate ?? certificate;
   const canPrintCertificate = Boolean(loadedCertificate?.certificate) || gameState.isGameOver;
   const selectedClassroom = classrooms.find((classroom) => classroom.id === selectedId);
+  const selectedTipEvent = contentEvents.find((event) => event.id === selectedTipEventId);
+  const selectedTipOverride = tipOverrides.find((override) => override.eventId === selectedTipEventId);
   const joinUrl = roomCode && roomCode !== '—' ? makeClassroomJoinUrl(roomCode) : null;
   const scenarioName = getEducationalScenarioTitle(
     selectedClassroom?.scenarioId ?? studentSession?.scenarioId
@@ -167,6 +196,7 @@ export const ClassroomModal: React.FC = () => {
 
   const handleSelectClassroom = (id: number) => {
     setLoadedCertificate(null);
+    setTipOverrides([]);
     void loadSummary(id);
   };
 
@@ -214,6 +244,40 @@ export const ClassroomModal: React.FC = () => {
       setApiError(err instanceof Error ? err.message : 'CSV-Export fehlgeschlagen.');
     } finally {
       setExportingCsv(false);
+    }
+  };
+
+  const handleSelectTipEvent = (eventId: string) => {
+    setSelectedTipEventId(eventId);
+    setTipOverrideText(tipOverrides.find((override) => override.eventId === eventId)?.tipText || '');
+  };
+
+  const handleSaveTipOverride = async () => {
+    if (selectedId == null || !selectedTipEventId) return;
+    setSavingTipOverride(true);
+    setApiError(null);
+    try {
+      await saveClassroomTipOverride(selectedId, selectedTipEventId, tipOverrideText);
+      await loadTipOverrides(selectedId);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Tipp konnte nicht gespeichert werden.');
+    } finally {
+      setSavingTipOverride(false);
+    }
+  };
+
+  const handleDeleteTipOverride = async () => {
+    if (selectedId == null || !selectedTipEventId) return;
+    setSavingTipOverride(true);
+    setApiError(null);
+    try {
+      await deleteClassroomTipOverride(selectedId, selectedTipEventId);
+      setTipOverrideText('');
+      await loadTipOverrides(selectedId);
+    } catch (err) {
+      setApiError(err instanceof Error ? err.message : 'Tipp konnte nicht gelöscht werden.');
+    } finally {
+      setSavingTipOverride(false);
     }
   };
 
@@ -377,6 +441,76 @@ export const ClassroomModal: React.FC = () => {
                 >
                   {deletingClassroomId === selectedClassroom.id ? 'Lösche Klasse…' : 'Klasse löschen'}
                 </button>
+              </div>
+            )}
+
+            {getTeacherToken() && selectedClassroom && (
+              <div className="p-5 rounded-3xl bg-amber-50/80 border-2 border-amber-200 space-y-3">
+                <div>
+                  <div className="text-[10px] font-black uppercase text-amber-800 tracking-wider">
+                    Tipps überschreiben
+                  </div>
+                  <p className="text-xs text-amber-950 font-semibold">
+                    Diese Hinweise gelten nur für die ausgewählte Klasse und ersetzen den Standard-Lerneffekt
+                    nach einer Event-Entscheidung.
+                  </p>
+                </div>
+
+                <label className="block text-xs">
+                  <span className="text-[10px] font-black uppercase text-gray-500">Event</span>
+                  <select
+                    value={selectedTipEventId}
+                    onChange={(e) => handleSelectTipEvent(e.target.value)}
+                    className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-amber-200 bg-white font-extrabold"
+                  >
+                    {contentEvents.map((event) => (
+                      <option key={event.id} value={event.id}>
+                        {event.title} ({event.id})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {selectedTipEvent && (
+                  <div className="p-3 rounded-2xl bg-white border border-amber-200 text-xs text-gray-700">
+                    <span className="font-extrabold block mb-1">Standard-Tipp:</span>
+                    {selectedTipEvent.choices[0]?.learningTip || 'Kein Standard-Tipp vorhanden.'}
+                  </div>
+                )}
+
+                <label className="block text-xs">
+                  <span className="text-[10px] font-black uppercase text-gray-500">
+                    Klassenspezifischer Tipp
+                  </span>
+                  <textarea
+                    value={tipOverrideText}
+                    onChange={(e) => setTipOverrideText(e.target.value)}
+                    rows={4}
+                    className="mt-1 w-full px-3 py-2 rounded-xl border-2 border-amber-200 bg-white"
+                    placeholder="Eigenen Tipp für diese Klasse formulieren…"
+                  />
+                </label>
+
+                <div className="flex flex-wrap justify-end gap-2">
+                  {selectedTipOverride && (
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteTipOverride()}
+                      disabled={savingTipOverride}
+                      className="px-4 py-2 rounded-xl bg-white hover:bg-amber-100 border border-amber-200 text-amber-900 font-extrabold text-xs disabled:opacity-50"
+                    >
+                      Überschreibung löschen
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveTipOverride()}
+                    disabled={savingTipOverride || !selectedTipEventId || !tipOverrideText.trim()}
+                    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs disabled:opacity-50"
+                  >
+                    {savingTipOverride ? 'Speichere…' : 'Tipp speichern'}
+                  </button>
+                </div>
               </div>
             )}
 
