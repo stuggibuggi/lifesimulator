@@ -76,6 +76,11 @@ describe('POST /api/tips/enhance', () => {
       learningTip: 'Kurzfassung.',
       eventId: 'EVT_TEST',
       choiceId: 'c_test',
+      age: 17,
+      scenarioId: 'SCENARIO_AUSBILDUNG',
+      alias: 'Alex',
+      email: 'alex@example.test',
+      name: 'Alex Beispiel',
     });
 
     expect(response.status).toBe(200);
@@ -88,6 +93,8 @@ describe('POST /api/tips/enhance', () => {
           learningTip: 'Kurzfassung.',
           eventId: 'EVT_TEST',
           choiceId: 'c_test',
+          age: 17,
+          scenarioId: 'SCENARIO_AUSBILDUNG',
         }),
       })
     );

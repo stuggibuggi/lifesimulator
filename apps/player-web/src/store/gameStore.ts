@@ -52,7 +52,14 @@ import {
 } from '@goal/game-content';
 import { sound } from '../audio/soundSynth';
 import confetti from 'canvas-confetti';
-import { fetchClassroomTipOverrides, fetchPublishedContent, getStudentSession, saveCloudRun } from '../api/client';
+import {
+  enhanceLearningTip,
+  fetchClassroomTipOverrides,
+  fetchPublishedContent,
+  getStudentSession,
+  saveCloudRun,
+  type TipEnhancementRequest,
+} from '../api/client';
 import { evaluateLifeRun } from '@goal/scoring-engine';
 
 export type GamePhase =
@@ -86,10 +93,16 @@ export type ActiveModal =
 export type CloudSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
 
 export interface EventChoiceFeedback {
+  eventId: string;
+  choiceId: string;
   eventTitle: string;
   choiceLabel: string;
   learningTip: string;
   financialImpact: number;
+  age: number;
+  scenarioId?: string;
+  hasClassroomTipOverride: boolean;
+  tipSource: 'static' | 'classroom' | 'llm';
   phoneTipCardId?: string;
 }
 
@@ -174,19 +187,78 @@ function createEventChoiceFeedback(
   eventId: string,
   eventTitle: string,
   choice: EventChoice,
+  scenarioId?: string,
   overrideTip?: string
 ): EventChoiceFeedback {
   const appliedChoice = [...updatedState.pastEvents]
     .reverse()
     .find((pastEvent) => pastEvent.eventId === eventId && pastEvent.choiceId === choice.id);
+  const hasClassroomTipOverride = Boolean(overrideTip?.trim());
 
   return {
+    eventId,
+    choiceId: choice.id,
     eventTitle,
     choiceLabel: choice.label,
-    learningTip: overrideTip || choice.learningTip,
+    learningTip: overrideTip?.trim() || choice.learningTip,
     financialImpact: appliedChoice?.financialImpact ?? choice.costImmediate,
+    age: updatedState.currentAge,
+    scenarioId,
+    hasClassroomTipOverride,
+    tipSource: hasClassroomTipOverride ? 'classroom' : 'static',
     phoneTipCardId: getLearningCardForLifeEvent(eventId)?.id,
   };
+}
+
+type LlmTipsEnv = { VITE_LLM_TIPS?: string };
+
+function isLlmTipsFlagEnabled(env?: LlmTipsEnv): boolean {
+  return env?.VITE_LLM_TIPS === '1' || env?.VITE_LLM_TIPS === 'true';
+}
+
+export function shouldRequestEnhancedTip(
+  feedback: Pick<EventChoiceFeedback, 'learningTip' | 'hasClassroomTipOverride'>,
+  env: LlmTipsEnv = import.meta.env as unknown as LlmTipsEnv
+): boolean {
+  return isLlmTipsFlagEnabled(env) && !feedback.hasClassroomTipOverride && feedback.learningTip.trim().length > 0;
+}
+
+export function buildTipEnhancementPayload(feedback: EventChoiceFeedback): TipEnhancementRequest {
+  return {
+    learningTip: feedback.learningTip,
+    eventId: feedback.eventId,
+    choiceId: feedback.choiceId,
+    age: feedback.age,
+    scenarioId: feedback.scenarioId,
+  };
+}
+
+function requestEnhancedTip(feedback: EventChoiceFeedback) {
+  void enhanceLearningTip(buildTipEnhancementPayload(feedback))
+    .then((tip) => {
+      useGameStore.setState((state) => {
+        const current = state.eventChoiceFeedback;
+        if (
+          !current ||
+          current.eventId !== feedback.eventId ||
+          current.choiceId !== feedback.choiceId ||
+          current.hasClassroomTipOverride
+        ) {
+          return {};
+        }
+
+        return {
+          eventChoiceFeedback: {
+            ...current,
+            learningTip: tip,
+            tipSource: 'llm',
+          },
+        };
+      });
+    })
+    .catch(() => {
+      // Gameplay stays on the static tip when the optional service fails.
+    });
 }
 
 async function maybeCloudSave(state: GameState, force = false) {
@@ -685,12 +757,15 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     sound.playPop();
     const event = gameState.activeEvent;
     const updatedState = applyEventChoice(gameState, event, choice);
+    const overrideTip = get().classroomTipOverrides[event.id];
+    const scenarioId = get().selectedScenario?.id ?? getStudentSession()?.scenarioId ?? undefined;
     const eventChoiceFeedback = createEventChoiceFeedback(
       updatedState,
       event.id,
       event.title,
       choice,
-      get().classroomTipOverrides[event.id]
+      scenarioId,
+      overrideTip
     );
 
     const newAchieved = updatedState.goals.some(
@@ -707,6 +782,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       pendingPhoneTipCardId: eventChoiceFeedback.phoneTipCardId ?? null,
     });
     persistLocal(updatedState);
+    if (shouldRequestEnhancedTip(eventChoiceFeedback)) {
+      requestEnhancedTip(eventChoiceFeedback);
+    }
     void maybeCloudSave(updatedState, true);
   },
 

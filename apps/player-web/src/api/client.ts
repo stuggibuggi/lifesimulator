@@ -97,6 +97,14 @@ export type ClassroomTipOverride = {
   updatedAt?: string | null;
 };
 
+export type TipEnhancementRequest = {
+  learningTip: string;
+  eventId: string;
+  choiceId: string;
+  age: number;
+  scenarioId?: string;
+};
+
 export type ClassroomSummaryMember = {
   alias: string;
   runId: number | null;
@@ -337,6 +345,15 @@ export async function fetchCertificate(
 
 export async function fetchPublishedContent(): Promise<PublishedContentBundle> {
   return apiFetch('/api/content/published');
+}
+
+export async function enhanceLearningTip(request: TipEnhancementRequest): Promise<string> {
+  const data = await apiFetch('/api/tips/enhance', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+
+  return typeof data.tip === 'string' && data.tip.trim() ? data.tip : request.learningTip;
 }
 
 export async function fetchAdminContentEvents() {
