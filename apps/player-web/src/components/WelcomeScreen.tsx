@@ -1,11 +1,29 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { sound } from '../audio/soundSynth';
-import { Sparkles, Play, FolderOpen, Target, ShieldCheck, HeartHandshake, Award } from 'lucide-react';
+import { Sparkles, Play, FolderOpen, Target } from 'lucide-react';
+
+function formatBuildStamp(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
+}
 
 export const WelcomeScreen: React.FC = () => {
   const { startNewGame, loadFromLocalStorage, importSaveState, setActiveModal } = useGameStore();
   const [loadError, setLoadError] = useState<string | null>(null);
+  const buildLabel = useMemo(
+    () => `Version ${__APP_VERSION__} · Build ${formatBuildStamp(__BUILD_TIME__)}`,
+    []
+  );
 
   useEffect(() => {
     try {
@@ -121,6 +139,10 @@ export const WelcomeScreen: React.FC = () => {
             <input type="file" accept=".json" onChange={handleFileUpload} className="hidden" />
           </label>
         </div>
+
+        <p className="mt-5 text-[11px] text-gray-400 font-medium tracking-wide" title="Zeitpunkt des letzten Frontend-Builds">
+          {buildLabel}
+        </p>
       </div>
 
       {/* Feature Pillar Cards */}
