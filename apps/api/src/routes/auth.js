@@ -121,6 +121,7 @@ router.post('/teacher/verify', async (req, res) => {
         id: teacher.id,
         email: teacher.email,
         displayName: teacher.display_name,
+        isAdmin: Boolean(teacher.is_admin),
       },
     });
   } catch (err) {
@@ -137,7 +138,7 @@ router.post('/teacher/login', async (req, res) => {
     const password = String(req.body.password || '');
 
     const rows = await query(
-      `SELECT id, email, password_hash, display_name, email_verified_at
+      `SELECT id, email, password_hash, display_name, email_verified_at, is_admin
        FROM teachers WHERE email = ? LIMIT 1`,
       [email]
     );
@@ -165,6 +166,7 @@ router.post('/teacher/login', async (req, res) => {
         id: teacher.id,
         email: teacher.email,
         displayName: teacher.display_name,
+        isAdmin: Boolean(teacher.is_admin),
       },
     });
   } catch (err) {
@@ -299,7 +301,7 @@ router.post('/teacher/reset-password', async (req, res) => {
 router.get('/teacher/me', requireTeacher, async (req, res) => {
   try {
     const rows = await query(
-      'SELECT id, email, display_name, email_verified_at FROM teachers WHERE id = ? LIMIT 1',
+      'SELECT id, email, display_name, email_verified_at, is_admin FROM teachers WHERE id = ? LIMIT 1',
       [req.teacher.teacherId]
     );
     if (!rows.length) return res.status(404).json({ error: 'Nicht gefunden.' });
@@ -309,6 +311,7 @@ router.get('/teacher/me', requireTeacher, async (req, res) => {
         email: rows[0].email,
         displayName: rows[0].display_name,
         emailVerified: Boolean(rows[0].email_verified_at),
+        isAdmin: Boolean(rows[0].is_admin),
       },
     });
   } catch (err) {

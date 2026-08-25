@@ -5,6 +5,7 @@ import express from 'express';
 import cors from 'cors';
 import authRoutes from './src/routes/auth.js';
 import classroomRoutes from './src/routes/classrooms.js';
+import contentRoutes from './src/routes/content.js';
 import runRoutes from './src/routes/runs.js';
 import tipsRoutes from './src/routes/tips.js';
 import { pool } from './src/db/pool.js';
@@ -32,6 +33,7 @@ app.get('/api/health', async (_req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/classrooms', classroomRoutes);
+app.use('/api/content', contentRoutes);
 app.use('/api/runs', runRoutes);
 app.use('/api/tips', tipsRoutes);
 

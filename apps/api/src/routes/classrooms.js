@@ -54,6 +54,35 @@ function recordFailedPinAttempt(key, now = Date.now()) {
   });
 }
 
+async function requireOwnedClassroom(req, res) {
+  const classroomId = Number(req.params.id);
+  if (!Number.isInteger(classroomId) || classroomId <= 0) {
+    res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    return null;
+  }
+
+  const rooms = await query('SELECT id, teacher_id FROM classrooms WHERE id = ? LIMIT 1', [
+    classroomId,
+  ]);
+  if (!rooms.length) {
+    res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    return null;
+  }
+  if (Number(rooms[0].teacher_id) !== Number(req.teacher.teacherId)) {
+    res.status(403).json({ error: 'Du kannst nur eigene Klassen bearbeiten.' });
+    return null;
+  }
+  return rooms[0];
+}
+
+function mapTipOverride(row) {
+  return {
+    eventId: row.event_id,
+    tipText: row.tip_text,
+    updatedAt: row.updated_at,
+  };
+}
+
 router.post('/', requireTeacher, async (req, res) => {
   try {
     const title = String(req.body.title || 'Meine Klasse').trim().slice(0, 200);
@@ -268,6 +297,97 @@ router.post('/join', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Beitritt fehlgeschlagen.' });
+  }
+});
+
+router.get('/:id/tip-overrides', async (req, res) => {
+  try {
+    const classroomId = Number(req.params.id);
+    if (!Number.isInteger(classroomId) || classroomId <= 0) {
+      return res.status(404).json({ error: 'Klasse nicht gefunden.' });
+    }
+
+    const teacherHeader = req.headers.authorization || '';
+    if (teacherHeader.startsWith('Bearer ')) {
+      return requireTeacher(req, res, async () => {
+        const room = await requireOwnedClassroom(req, res);
+        if (!room) return;
+        const rows = await query(
+          `SELECT event_id, tip_text, updated_at
+           FROM classroom_tip_overrides
+           WHERE classroom_id = ?
+           ORDER BY event_id ASC`,
+          [classroomId]
+        );
+        res.json({ tipOverrides: rows.map(mapTipOverride) });
+      });
+    }
+
+    const studentToken = req.headers['x-student-token'];
+    if (!studentToken) {
+      return res.status(401).json({ error: 'Lehrer-Login oder Schüler-Sitzung erforderlich.' });
+    }
+
+    const memberships = await query(
+      'SELECT classroom_id FROM memberships WHERE session_token = ? LIMIT 1',
+      [String(studentToken)]
+    );
+    if (!memberships.length || Number(memberships[0].classroom_id) !== classroomId) {
+      return res.status(403).json({ error: 'Diese Schüler-Sitzung gehört nicht zu dieser Klasse.' });
+    }
+
+    const rows = await query(
+      `SELECT event_id, tip_text, updated_at
+       FROM classroom_tip_overrides
+       WHERE classroom_id = ?
+       ORDER BY event_id ASC`,
+      [classroomId]
+    );
+    res.json({ tipOverrides: rows.map(mapTipOverride) });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Tipps konnten nicht geladen werden.' });
+  }
+});
+
+router.put('/:id/tip-overrides/:eventId', requireTeacher, async (req, res) => {
+  try {
+    const room = await requireOwnedClassroom(req, res);
+    if (!room) return;
+
+    const eventId = String(req.params.eventId || '').trim().slice(0, 64);
+    const tipText = String(req.body.tipText || '').trim().slice(0, 2000);
+    if (!eventId || !tipText) {
+      return res.status(400).json({ error: 'Event-ID und Tipptext sind erforderlich.' });
+    }
+
+    await query(
+      `INSERT INTO classroom_tip_overrides (classroom_id, event_id, tip_text, teacher_id)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE tip_text = VALUES(tip_text), teacher_id = VALUES(teacher_id)`,
+      [room.id, eventId, tipText, req.teacher.teacherId]
+    );
+
+    res.json({ tipOverride: { eventId, tipText } });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Tipp konnte nicht gespeichert werden.' });
+  }
+});
+
+router.delete('/:id/tip-overrides/:eventId', requireTeacher, async (req, res) => {
+  try {
+    const room = await requireOwnedClassroom(req, res);
+    if (!room) return;
+    const eventId = String(req.params.eventId || '').trim().slice(0, 64);
+    await query('DELETE FROM classroom_tip_overrides WHERE classroom_id = ? AND event_id = ?', [
+      room.id,
+      eventId,
+    ]);
+    res.status(204).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Tipp konnte nicht gelöscht werden.' });
   }
 });
 
