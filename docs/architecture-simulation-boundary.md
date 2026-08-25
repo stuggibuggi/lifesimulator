@@ -1,6 +1,6 @@
 # Simulation Boundary
 
-Phase D keeps month simulation in the client-side simulation engine. The API remains responsible for authentication, classroom membership, and cloud-save state sync only.
+Phase D keeps month simulation in the client-side simulation engine. The API remains responsible for authentication, classroom membership, cloud-save state sync, published content, optional tip enhancement, and teacher OIDC — **not** month transitions.
 
 ## Current Boundary
 
@@ -12,7 +12,7 @@ This preserves the current offline-friendly classroom flow: gameplay stays respo
 
 ## Why Not Server-Side Simulation Yet
 
-Server-side month simulation would require a stronger contract than Phase D intends to add:
+Server-side month simulation would require a stronger contract than Phase D implements at runtime:
 
 - versioned engine/content packages on the API host
 - migration rules for old saved states
@@ -20,9 +20,22 @@ Server-side month simulation would require a stronger contract than Phase D inte
 - server validation of every user action that can affect simulation state
 - broader API tests around score, events, taxes, careers, and certificates
 
-Adding those pieces partially would create two sources of truth. Phase D therefore documents the boundary only and leaves the actual gameplay engine unchanged.
+Adding those pieces partially would create two sources of truth. Phase **D4** therefore ships the **API contract only** (see [`api-runs-actions-contract.md`](./api-runs-actions-contract.md)). Runtime cutover is Phase **E4**.
 
-## Future Server Responsibilities
+## Contract Preview (D4)
+
+Proposed (unimplemented) endpoint:
+
+`POST /api/runs/:id/actions`
+
+- Actions: `STEP_MONTH`, `EVENT_CHOICE`
+- Requires student session ownership, `expectedAge`/`expectedMonth`, `clientEngineVersion`, `idempotencyKey`
+- Version / concurrency conflicts → `409`
+- Full request/response shapes and error table: [`api-runs-actions-contract.md`](./api-runs-actions-contract.md)
+
+Optional stub behavior if a route is added early: respond `501 Not Implemented` with a pointer to this doc — do **not** silently run the engine on the server until E4.
+
+## Future Server Responsibilities (E4+)
 
 A later server-simulation phase could move these responsibilities behind API endpoints:
 
@@ -32,7 +45,7 @@ A later server-simulation phase could move these responsibilities behind API end
 - persist the new state and append an audit/event log entry
 - return the updated state, scoring deltas, and generated feedback
 
-At that point the client would render server results instead of calling `stepSimulationMonth` directly.
+At that point the client would render server results instead of calling `stepSimulationMonth` directly (classroom/cloud path first).
 
 ## Cloud-Save Contract
 
