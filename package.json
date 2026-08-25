@@ -12,6 +12,7 @@
     "dev:api": "npm run dev --workspace=apps/api",
     "start:api": "npm run start --workspace=apps/api",
     "migrate:api": "npm run migrate --workspace=apps/api",
+    "seed:content": "npm run content:seed:export --workspace=@goal/game-content && npm run seed:content --workspace=apps/api",
     "smoke:api": "npm run smoke --workspace=apps/api",
     "content:validate": "npm run content:validate --workspace=@goal/game-content",
     "build": "npm run build --workspaces --if-present",
