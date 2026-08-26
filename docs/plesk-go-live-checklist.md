@@ -5,7 +5,8 @@
 - [ ] `apps/api/schema.sql` imported OR `npm run migrate` in `apps/api`
 - [ ] `npm run seed:content` in `apps/api` (published events/scenarios for CMS)
 - [ ] `.env` present with DB_*, JWT_SECRET, CORS_ORIGIN, APP_PUBLIC_URL, SMTP_*
-- [ ] Optional Phase D: `LLM_TIPS_ENABLED`, `LLM_API_URL`, OIDC_* (see `apps/api/.env.example`)
+- [ ] Optional Phase E2: `LLM_TIPS_ENABLED`, `LLM_API_URL`, `LLM_TIPS_TIMEOUT_MS` (see `apps/api/.env.example`)
+- [ ] Optional Phase D: OIDC_* (see `apps/api/.env.example`)
 
 ## 2. Node API
 - [ ] Application Root = `apps/api`
@@ -17,7 +18,7 @@
 
 ## 3. Frontend
 - [ ] Built with `VITE_API_URL` pointing at the live API (or same host if /api proxied)
-- [ ] Optional: `VITE_LLM_TIPS=true` only when API LLM tips are enabled
+- [ ] Frontend always requests tip enhancement after event choices; disable only via API `LLM_TIPS_*` env
 - [ ] Document Root = `apps/player-web/dist`
 - [ ] No CORS errors in browser console
 - [ ] Welcome screen shows Version / Build badge
