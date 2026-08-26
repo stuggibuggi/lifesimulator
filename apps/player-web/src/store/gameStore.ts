@@ -92,6 +92,8 @@ export type ActiveModal =
 
 export type CloudSaveStatus = 'idle' | 'saving' | 'saved' | 'error' | 'offline';
 
+export type TipRequestStatus = 'idle' | 'loading' | 'ready' | 'failed';
+
 export interface EventChoiceFeedback {
   eventId: string;
   choiceId: string;
@@ -103,6 +105,8 @@ export interface EventChoiceFeedback {
   scenarioId?: string;
   hasClassroomTipOverride: boolean;
   tipSource: 'static' | 'classroom' | 'llm';
+  tipRequestStatus: TipRequestStatus;
+  canRetry: boolean;
   phoneTipCardId?: string;
 }
 
@@ -206,21 +210,99 @@ function createEventChoiceFeedback(
     scenarioId,
     hasClassroomTipOverride,
     tipSource: hasClassroomTipOverride ? 'classroom' : 'static',
+    tipRequestStatus: 'idle',
+    canRetry: false,
     phoneTipCardId: getLearningCardForLifeEvent(eventId)?.id,
   };
 }
 
-type LlmTipsEnv = { VITE_LLM_TIPS?: string };
-
-function isLlmTipsFlagEnabled(env?: LlmTipsEnv): boolean {
-  return env?.VITE_LLM_TIPS === '1' || env?.VITE_LLM_TIPS === 'true';
+export function shouldRequestEnhancedTip(
+  feedback: Pick<EventChoiceFeedback, 'learningTip' | 'hasClassroomTipOverride'>
+): boolean {
+  return !feedback.hasClassroomTipOverride && feedback.learningTip.trim().length > 0;
 }
 
-export function shouldRequestEnhancedTip(
-  feedback: Pick<EventChoiceFeedback, 'learningTip' | 'hasClassroomTipOverride'>,
-  env: LlmTipsEnv = import.meta.env as unknown as LlmTipsEnv
-): boolean {
-  return isLlmTipsFlagEnabled(env) && !feedback.hasClassroomTipOverride && feedback.learningTip.trim().length > 0;
+export function markTipRequestLoading(feedback: EventChoiceFeedback): EventChoiceFeedback {
+  if (!shouldRequestEnhancedTip(feedback)) {
+    return {
+      ...feedback,
+      tipRequestStatus: feedback.hasClassroomTipOverride ? 'idle' : 'ready',
+      canRetry: false,
+    };
+  }
+
+  return {
+    ...feedback,
+    tipRequestStatus: 'loading',
+    canRetry: false,
+  };
+}
+
+export type TipEnhancementResult = {
+  enabled: boolean;
+  tip: string;
+};
+
+export function applyTipEnhancementResult(
+  current: EventChoiceFeedback | null,
+  requested: Pick<EventChoiceFeedback, 'eventId' | 'choiceId'>,
+  result: TipEnhancementResult | null,
+  failed = false
+): Partial<Pick<{ eventChoiceFeedback: EventChoiceFeedback }, 'eventChoiceFeedback'>> {
+  if (
+    !current ||
+    current.eventId !== requested.eventId ||
+    current.choiceId !== requested.choiceId ||
+    current.hasClassroomTipOverride ||
+    current.tipSource === 'classroom'
+  ) {
+    return {};
+  }
+
+  if (failed || result == null) {
+    return {
+      eventChoiceFeedback: {
+        ...current,
+        tipSource: 'static',
+        tipRequestStatus: 'failed',
+        canRetry: true,
+      },
+    };
+  }
+
+  const enhanced = result.tip.trim();
+  const original = current.learningTip.trim();
+  if (result.enabled && enhanced && enhanced !== original) {
+    return {
+      eventChoiceFeedback: {
+        ...current,
+        learningTip: enhanced,
+        tipSource: 'llm',
+        tipRequestStatus: 'ready',
+        canRetry: false,
+      },
+    };
+  }
+
+  if (!result.enabled) {
+    return {
+      eventChoiceFeedback: {
+        ...current,
+        tipSource: 'static',
+        tipRequestStatus: 'ready',
+        canRetry: false,
+      },
+    };
+  }
+
+  return {
+    eventChoiceFeedback: {
+      ...current,
+      tipSource: 'static',
+      tipRequestStatus: 'failed',
+      canRetry: true,
+    },
+  };
 }
 
 export function buildTipEnhancementPayload(feedback: EventChoiceFeedback): TipEnhancementRequest {
