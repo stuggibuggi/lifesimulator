@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGameStore } from '../store/gameStore';
 import { EventChoice } from '@goal/shared-types';
 import { sound } from '../audio/soundSynth';
+import { EventTipCard } from './EventModal.TipCard';
 import {
   AlertTriangle,
   Award,
@@ -80,7 +81,8 @@ function LifeEventIcon({ iconName }: { iconName: string }) {
 }
 
 export const EventModal: React.FC = () => {
-  const { gameState, eventChoiceFeedback, handleEventChoice, dismissEventFeedback } = useGameStore();
+  const { gameState, eventChoiceFeedback, handleEventChoice, dismissEventFeedback, retryEnhancedTip } =
+    useGameStore();
   const [selectedChoice, setSelectedChoice] = useState<EventChoice | null>(null);
 
   if (eventChoiceFeedback) {
@@ -137,13 +139,7 @@ export const EventModal: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-amber-50/80 p-4 rounded-2xl border border-amber-200 text-xs text-amber-950 flex items-start gap-2.5">
-              <BookOpen className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-extrabold block">Lerneffekt:</span>
-                <span className="leading-relaxed">{eventChoiceFeedback.learningTip}</span>
-              </div>
-            </div>
+            <EventTipCard feedback={eventChoiceFeedback} onRetry={retryEnhancedTip} />
 
             {eventChoiceFeedback.phoneTipCardId && (
               <div className="bg-skyline-50 p-4 rounded-2xl border border-skyline-200 text-xs text-skyline-950 flex items-start gap-2.5">
