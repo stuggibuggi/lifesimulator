@@ -351,13 +351,17 @@ export async function fetchPublishedContent(): Promise<PublishedContentBundle> {
   return apiFetch('/api/content/published');
 }
 
-export async function enhanceLearningTip(request: TipEnhancementRequest): Promise<string> {
+export async function enhanceLearningTip(
+  request: TipEnhancementRequest
+): Promise<{ enabled: boolean; tip: string }> {
   const data = await apiFetch('/api/tips/enhance', {
     method: 'POST',
     body: JSON.stringify(request),
   });
 
-  return typeof data.tip === 'string' && data.tip.trim() ? data.tip : request.learningTip;
+  const tip =
+    typeof data.tip === 'string' && data.tip.trim() ? data.tip : request.learningTip;
+  return { enabled: Boolean(data.enabled), tip };
 }
 
 export async function fetchAdminContentEvents() {

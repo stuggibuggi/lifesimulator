@@ -145,6 +145,7 @@ interface GameStoreState {
 
   handleEventChoice: (choice: EventChoice) => void;
   dismissEventFeedback: () => void;
+  retryEnhancedTip: () => void;
   handleToggleInsurance: (insurance: InsuranceContract, deductible?: number, healthPreCondition?: boolean) => void;
   handleSetSavingsRates: (emergencyRate: number, etfRate: number) => void;
   handleTakeLoan: (title: string, amount: number, interest: number, months: number, type?: any) => void;
@@ -316,30 +317,17 @@ export function buildTipEnhancementPayload(feedback: EventChoiceFeedback): TipEn
 }
 
 function requestEnhancedTip(feedback: EventChoiceFeedback) {
+  const requested = { eventId: feedback.eventId, choiceId: feedback.choiceId };
   void enhanceLearningTip(buildTipEnhancementPayload(feedback))
-    .then((tip) => {
-      useGameStore.setState((state) => {
-        const current = state.eventChoiceFeedback;
-        if (
-          !current ||
-          current.eventId !== feedback.eventId ||
-          current.choiceId !== feedback.choiceId ||
-          current.hasClassroomTipOverride
-        ) {
-          return {};
-        }
-
-        return {
-          eventChoiceFeedback: {
-            ...current,
-            learningTip: tip,
-            tipSource: 'llm',
-          },
-        };
-      });
+    .then((result) => {
+      useGameStore.setState((state) =>
+        applyTipEnhancementResult(state.eventChoiceFeedback, requested, result)
+      );
     })
     .catch(() => {
-      // Gameplay stays on the static tip when the optional service fails.
+      useGameStore.setState((state) =>
+        applyTipEnhancementResult(state.eventChoiceFeedback, requested, null, true)
+      );
     });
 }
 
@@ -858,14 +846,18 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       confetti({ particleCount: 80, spread: 60 });
     }
 
+    const feedback = shouldRequestEnhancedTip(eventChoiceFeedback)
+      ? markTipRequestLoading(eventChoiceFeedback)
+      : eventChoiceFeedback;
+
     set({
       gameState: updatedState,
-      eventChoiceFeedback,
+      eventChoiceFeedback: feedback,
       pendingPhoneTipCardId: eventChoiceFeedback.phoneTipCardId ?? null,
     });
     persistLocal(updatedState);
-    if (shouldRequestEnhancedTip(eventChoiceFeedback)) {
-      requestEnhancedTip(eventChoiceFeedback);
+    if (shouldRequestEnhancedTip(feedback)) {
+      requestEnhancedTip(feedback);
     }
     void maybeCloudSave(updatedState, true);
   },
@@ -877,6 +869,14 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       eventChoiceFeedback: null,
       gameState: gameState ? { ...gameState, activeEvent: null } : gameState,
     });
+  },
+
+  retryEnhancedTip: () => {
+    const current = get().eventChoiceFeedback;
+    if (!current?.canRetry || !shouldRequestEnhancedTip(current)) return;
+    const loading = markTipRequestLoading(current);
+    set({ eventChoiceFeedback: loading });
+    requestEnhancedTip(loading);
   },
 
   handleToggleInsurance: (insurance, deductible, healthPreCondition) => {
