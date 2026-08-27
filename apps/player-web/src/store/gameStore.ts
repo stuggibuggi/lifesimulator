@@ -57,7 +57,11 @@ import {
   fetchClassroomTipOverrides,
   fetchPublishedContent,
   getStudentSession,
+  getCloudRunId,
   saveCloudRun,
+  loadCloudRun,
+  postRunAction,
+  CLIENT_ENGINE_VERSION,
   type TipEnhancementRequest,
 } from '../api/client';
 import { evaluateLifeRun } from '@goal/scoring-engine';
@@ -188,6 +192,101 @@ function rngFromGameState(state: GameState): SeededRandom {
 
 function withRngState(state: GameState, rng: SeededRandom): GameState {
   return { ...state, rngState: rng.getState() };
+}
+
+type ServerSimEnv = { VITE_SERVER_SIM?: string };
+
+export function isServerSimEnabled(
+  env: ServerSimEnv = import.meta.env as unknown as ServerSimEnv,
+  hasStudentSession = Boolean(getStudentSession())
+): boolean {
+  const flag = env?.VITE_SERVER_SIM === '1' || env?.VITE_SERVER_SIM === 'true';
+  return flag && hasStudentSession;
+}
+
+function newIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `idem-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+async function ensureCloudRunId(state: GameState): Promise<number> {
+  const existing = getCloudRunId();
+  if (existing != null) return existing;
+  await saveCloudRun(state);
+  const created = getCloudRunId();
+  if (created == null) throw new Error('Cloud-Run konnte nicht angelegt werden.');
+  return created;
+}
+
+async function reloadCloudGameState(): Promise<GameState | null> {
+  const data = await loadCloudRun();
+  const next = data?.run?.gameState as GameState | undefined;
+  return next && typeof next === 'object' ? next : null;
+}
+
+function applyServerNextState(nextState: GameState, triggeredEvent: LifeEvent | null) {
+  const rng = rngFromGameState(nextState);
+
+  if (triggeredEvent) {
+    sound.playEventAlert();
+  } else if (nextState.bankAccount.giroBalance < 0) {
+    sound.playWarning();
+  } else {
+    sound.playCoin();
+  }
+
+  if (nextState.isGameOver) {
+    sound.playFanfare();
+    confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+    useGameStore.setState({
+      gameState: nextState,
+      prng: rng,
+      gamePhase: 'EVALUATION',
+    });
+  } else {
+    useGameStore.setState({
+      gameState: nextState,
+      prng: rng,
+    });
+  }
+  persistLocal(nextState);
+}
+
+async function stepMonthOnServer(gameState: GameState) {
+  try {
+    const runId = await ensureCloudRunId(gameState);
+    const response = await postRunAction(runId, {
+      action: { type: 'STEP_MONTH' },
+      expectedAge: gameState.currentAge,
+      expectedMonth: gameState.currentMonth,
+      clientEngineVersion: CLIENT_ENGINE_VERSION,
+      idempotencyKey: newIdempotencyKey(),
+    });
+    applyServerNextState(
+      response.nextState as GameState,
+      (response.triggeredEvent as LifeEvent | null) ?? null
+    );
+  } catch (err: any) {
+    if (err?.status === 409 || String(err?.message || '').includes('409')) {
+      const refreshed = await reloadCloudGameState();
+      if (refreshed) {
+        useGameStore.setState({
+          gameState: refreshed,
+          prng: rngFromGameState(refreshed),
+          cloudSaveMessage: 'Spielstand wurde aktualisiert.',
+          cloudSaveStatus: 'saved',
+        });
+        persistLocal(refreshed);
+        return;
+      }
+    }
+    useGameStore.setState({
+      cloudSaveStatus: 'error',
+      cloudSaveMessage: 'Server-Simulation fehlgeschlagen. Bitte erneut versuchen.',
+    });
+  }
 }
 
 function persistLocal(state: GameState) {
@@ -749,6 +848,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const { gameState, prng } = get();
     if (!gameState || gameState.isGameOver) return;
 
+    if (isServerSimEnabled()) {
+      void stepMonthOnServer(gameState);
+      return;
+    }
+
     const rng = prng || rngFromGameState(gameState);
     const events = get().contentEvents.length ? get().contentEvents : ALL_LIFE_EVENTS;
     const result = stepSimulationMonth(gameState, events, rng);
@@ -789,6 +893,50 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   stepYear: () => {
     const { gameState, prng } = get();
     if (!gameState || gameState.isGameOver) return;
+
+    if (isServerSimEnabled()) {
+      void (async () => {
+        let state = gameState;
+        for (let i = 0; i < 12; i++) {
+          if (state.isGameOver) break;
+          try {
+            const runId = await ensureCloudRunId(state);
+            const response = await postRunAction(runId, {
+              action: { type: 'STEP_MONTH' },
+              expectedAge: state.currentAge,
+              expectedMonth: state.currentMonth,
+              clientEngineVersion: CLIENT_ENGINE_VERSION,
+              idempotencyKey: newIdempotencyKey(),
+            });
+            const nextState = response.nextState as GameState;
+            const triggered = (response.triggeredEvent as LifeEvent | null) ?? null;
+            applyServerNextState(nextState, triggered);
+            state = nextState;
+            if (triggered) return;
+          } catch (err: any) {
+            if (err?.status === 409) {
+              const refreshed = await reloadCloudGameState();
+              if (refreshed) {
+                useGameStore.setState({
+                  gameState: refreshed,
+                  prng: rngFromGameState(refreshed),
+                  cloudSaveMessage: 'Spielstand wurde aktualisiert.',
+                  cloudSaveStatus: 'saved',
+                });
+                persistLocal(refreshed);
+              }
+            } else {
+              useGameStore.setState({
+                cloudSaveStatus: 'error',
+                cloudSaveMessage: 'Server-Simulation fehlgeschlagen. Bitte erneut versuchen.',
+              });
+            }
+            return;
+          }
+        }
+      })();
+      return;
+    }
 
     const rng = prng || rngFromGameState(gameState);
     let state = gameState;
@@ -843,6 +991,71 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     sound.playPop();
     const event = gameState.activeEvent;
+
+    if (isServerSimEnabled()) {
+      void (async () => {
+        try {
+          const runId = await ensureCloudRunId(gameState);
+          const response = await postRunAction(runId, {
+            action: {
+              type: 'EVENT_CHOICE',
+              eventId: event.id,
+              choiceId: choice.id,
+            },
+            expectedAge: gameState.currentAge,
+            expectedMonth: gameState.currentMonth,
+            clientEngineVersion: CLIENT_ENGINE_VERSION,
+            idempotencyKey: newIdempotencyKey(),
+          });
+          const updatedState = response.nextState as GameState;
+          const overrideTip = get().classroomTipOverrides[event.id];
+          const scenarioId =
+            get().selectedScenario?.id ?? getStudentSession()?.scenarioId ?? undefined;
+          const eventChoiceFeedback = createEventChoiceFeedback(
+            updatedState,
+            event.id,
+            event.title,
+            choice,
+            scenarioId,
+            overrideTip
+          );
+          const feedback = shouldRequestEnhancedTip(eventChoiceFeedback)
+            ? markTipRequestLoading(eventChoiceFeedback)
+            : eventChoiceFeedback;
+
+          useGameStore.setState({
+            gameState: updatedState,
+            prng: rngFromGameState(updatedState),
+            eventChoiceFeedback: feedback,
+            pendingPhoneTipCardId: eventChoiceFeedback.phoneTipCardId ?? null,
+          });
+          persistLocal(updatedState);
+          if (shouldRequestEnhancedTip(feedback)) {
+            requestEnhancedTip(feedback);
+          }
+        } catch (err: any) {
+          if (err?.status === 409) {
+            const refreshed = await reloadCloudGameState();
+            if (refreshed) {
+              useGameStore.setState({
+                gameState: refreshed,
+                prng: rngFromGameState(refreshed),
+                cloudSaveMessage: 'Spielstand wurde aktualisiert.',
+                cloudSaveStatus: 'saved',
+              });
+              persistLocal(refreshed);
+              return;
+            }
+          }
+          useGameStore.setState({
+            cloudSaveStatus: 'error',
+            cloudSaveMessage: 'Server-Simulation fehlgeschlagen. Bitte erneut versuchen.',
+          });
+        }
+      })();
+      return;
+    }
+
     const updatedState = applyEventChoice(gameState, event, choice);
     const overrideTip = get().classroomTipOverrides[event.id];
     const scenarioId = get().selectedScenario?.id ?? getStudentSession()?.scenarioId ?? undefined;

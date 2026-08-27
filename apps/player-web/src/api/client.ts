@@ -22,6 +22,7 @@ const TEACHER_TOKEN_KEY = 'GOAL_TEACHER_TOKEN';
 const TEACHER_PROFILE_KEY = 'GOAL_TEACHER_PROFILE';
 const STUDENT_SESSION_KEY = 'GOAL_STUDENT_SESSION';
 const ACTIVE_CLASSROOM_KEY = 'GOAL_ACTIVE_CLASSROOM_ID';
+const CLOUD_RUN_ID_KEY = 'GOAL_CLOUD_RUN_ID';
 
 export function getApiBase(): string {
   return resolveApiBase();
@@ -176,7 +177,30 @@ export function getStudentSession(): StudentSession | null {
 export function setStudentSession(session: StudentSession | null) {
   try {
     if (session) localStorage.setItem(STUDENT_SESSION_KEY, JSON.stringify(session));
-    else localStorage.removeItem(STUDENT_SESSION_KEY);
+    else {
+      localStorage.removeItem(STUDENT_SESSION_KEY);
+      localStorage.removeItem(CLOUD_RUN_ID_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+export function getCloudRunId(): number | null {
+  try {
+    const raw = localStorage.getItem(CLOUD_RUN_ID_KEY);
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCloudRunId(id: number | null) {
+  try {
+    if (id == null) localStorage.removeItem(CLOUD_RUN_ID_KEY);
+    else localStorage.setItem(CLOUD_RUN_ID_KEY, String(id));
   } catch {
     // ignore
   }
@@ -199,7 +223,10 @@ async function apiFetch<T = any>(path: string, options: RequestInit = {}): Promi
   }
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw Object.assign(new Error(data.error || `API-Fehler ${res.status}`), data);
+    throw Object.assign(new Error(data.error || `API-Fehler ${res.status}`), {
+      ...data,
+      status: res.status,
+    });
   }
   return data;
 }
@@ -447,9 +474,11 @@ export async function joinClassroom(roomCode: string, alias: string, pin: string
 export async function loadCloudRun() {
   const session = getStudentSession();
   if (!session) return null;
-  return apiFetch('/api/runs/me', {
+  const data = await apiFetch('/api/runs/me', {
     headers: { 'X-Student-Token': session.sessionToken },
   });
+  if (data?.run?.id != null) setCloudRunId(Number(data.run.id));
+  return data;
 }
 
 export async function saveCloudRun(
@@ -458,7 +487,7 @@ export async function saveCloudRun(
 ) {
   const session = getStudentSession();
   if (!session) return null;
-  return apiFetch('/api/runs/me', {
+  const data = await apiFetch('/api/runs/me', {
     method: 'PUT',
     headers: { 'X-Student-Token': session.sessionToken },
     body: JSON.stringify({
@@ -466,6 +495,41 @@ export async function saveCloudRun(
       overallScore: extras?.overallScore,
       evaluation: extras?.evaluation,
     }),
+  });
+  if (data?.runId != null) setCloudRunId(Number(data.runId));
+  return data;
+}
+
+export type RunActionRequest = {
+  action:
+    | { type: 'STEP_MONTH' }
+    | { type: 'EVENT_CHOICE'; eventId: string; choiceId: string };
+  expectedAge: number;
+  expectedMonth: number;
+  clientEngineVersion: string;
+  idempotencyKey: string;
+};
+
+export type RunActionResponse = {
+  nextState: unknown;
+  triggeredEvent: unknown;
+  deltas?: { giroDelta?: number };
+  serverEngineVersion: string;
+  contentVersion: number;
+};
+
+export const CLIENT_ENGINE_VERSION = '0.1.0';
+
+export async function postRunAction(
+  runId: number,
+  body: RunActionRequest
+): Promise<RunActionResponse> {
+  const session = getStudentSession();
+  if (!session) throw new Error('Keine Schüler-Sitzung.');
+  return apiFetch(`/api/runs/${runId}/actions`, {
+    method: 'POST',
+    headers: { 'X-Student-Token': session.sessionToken },
+    body: JSON.stringify(body),
   });
 }
 

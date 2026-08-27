@@ -44,11 +44,12 @@ export function applyRunAction(input: {
     };
   }
 
+  const eventAction = input.action;
   const active = input.state.activeEvent;
-  if (!active || active.id !== input.action.eventId) {
+  if (!active || active.id !== eventAction.eventId) {
     throw Object.assign(new Error('EVENT_MISMATCH'), { code: 'CONFLICT' });
   }
-  const choice = active.choices.find((c) => c.id === input.action.choiceId);
+  const choice = active.choices.find((c) => c.id === eventAction.choiceId);
   if (!choice) {
     throw Object.assign(new Error('UNKNOWN_CHOICE'), { code: 'UNPROCESSABLE' });
   }
