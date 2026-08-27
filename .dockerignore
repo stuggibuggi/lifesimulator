@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+.git
+.worktrees
+.cursor
+.superpowers
+**/.env
+**/.env.*
+*.log
+apps/player-web/dist
+apps/api/src/sim/engine.bundle.mjs
+docs

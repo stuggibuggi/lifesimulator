@@ -1,0 +1,54 @@
+services:
+  db:
+    image: mariadb:11.4
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: goal_db
+      MYSQL_USER: goal_user
+      MYSQL_PASSWORD: goal_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - goal_mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      PORT: "3001"
+      JWT_SECRET: docker-dev-jwt-secret-change-me
+      CORS_ORIGIN: http://localhost:8080
+      APP_PUBLIC_URL: http://localhost:8080
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_USER: goal_user
+      DB_PASSWORD: goal_pass
+      DB_NAME: goal_db
+      SEED_CONTENT: "1"
+      LLM_TIPS_ENABLED: "false"
+      SERVER_SIM_STRICT: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/player-web/Dockerfile
+      args:
+        VITE_SERVER_SIM: "0"
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
+
+volumes:
+  goal_mariadb_data:
