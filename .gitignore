@@ -39,3 +39,6 @@ Thumbs.db
 tmp/
 
 .worktrees/
+
+# Generated Node bundle of @goal/simulation-engine for apps/api
+apps/api/src/sim/engine.bundle.mjs
