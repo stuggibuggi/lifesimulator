@@ -98,3 +98,15 @@ CREATE TABLE IF NOT EXISTS classroom_tip_overrides (
   CONSTRAINT fk_tip_overrides_teacher FOREIGN KEY (teacher_id) REFERENCES teachers(id) ON DELETE CASCADE,
   UNIQUE KEY uq_classroom_event_tip (classroom_id, event_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS run_action_audit (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  game_run_id INT UNSIGNED NOT NULL,
+  idempotency_key VARCHAR(64) NOT NULL,
+  action_type VARCHAR(32) NOT NULL,
+  request_json LONGTEXT NOT NULL,
+  response_json LONGTEXT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_run_idem (game_run_id, idempotency_key),
+  CONSTRAINT fk_run_action_audit_run FOREIGN KEY (game_run_id) REFERENCES game_runs(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

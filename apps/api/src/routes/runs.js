@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db/pool.js';
 import { requireStudent } from '../middleware/auth.js';
 import { parseJsonField } from '../util.js';
+import actionsRouter from './runs.actions.js';
 
 const router = Router();
 
@@ -72,6 +73,26 @@ router.put('/me', requireStudent, async (req, res) => {
       req.body.overallScore != null ? Number(req.body.overallScore) : null;
     const evaluation = req.body.evaluation || null;
 
+    if (
+      (process.env.SERVER_SIM_STRICT === '1' || process.env.SERVER_SIM_STRICT === 'true') &&
+      membership.run_id
+    ) {
+      const existingRuns = await query(
+        `SELECT game_state FROM game_runs WHERE id = ? LIMIT 1`,
+        [membership.run_id]
+      );
+      const existingState = existingRuns[0] ? parseJsonField(existingRuns[0].game_state) : null;
+      if (
+        existingState &&
+        (Number(existingState.currentAge) !== Number(gameState.currentAge) ||
+          Number(existingState.currentMonth) !== Number(gameState.currentMonth))
+      ) {
+        return res.status(409).json({
+          error: 'Cloud-Save blockiert: Monatsschritte laufen über Server-Simulation.',
+        });
+      }
+    }
+
     const payload = JSON.stringify(gameState);
 
     if (membership.run_id) {
@@ -122,5 +143,7 @@ router.put('/me', requireStudent, async (req, res) => {
     res.status(500).json({ error: 'Cloud-Save fehlgeschlagen.' });
   }
 });
+
+router.use(actionsRouter);
 
 export default router;
