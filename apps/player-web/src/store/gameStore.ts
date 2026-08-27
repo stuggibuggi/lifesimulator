@@ -179,6 +179,17 @@ interface GameStoreState {
 const STORAGE_KEY = 'GOAL_LIFE_SIM_SAVE_V1';
 let cloudSaveCounter = 0;
 
+function rngFromGameState(state: GameState): SeededRandom {
+  if (typeof state.rngState === 'number') {
+    return SeededRandom.fromState(state.rngState);
+  }
+  return new SeededRandom(state.seed);
+}
+
+function withRngState(state: GameState, rng: SeededRandom): GameState {
+  return { ...state, rngState: rng.getState() };
+}
+
 function persistLocal(state: GameState) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
@@ -544,7 +555,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     const seed = Date.now();
     const rng = new SeededRandom(seed);
-    let state = createInitialGameState(defaultCharacter, goals, seed);
+    let state = withRngState(createInitialGameState(defaultCharacter, goals, seed), rng);
     state.currentAge = scenario.startAge;
     state.scenarioEndAge = scenario.endAge;
     state.currentYear = Math.max(1, scenario.startAge - 15);
@@ -688,7 +699,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     const seed = Date.now();
     const rng = new SeededRandom(seed);
-    let state = createInitialGameState(tempCharacter, tempGoals, seed);
+    let state = withRngState(createInitialGameState(tempCharacter, tempGoals, seed), rng);
 
     state = changeCareerPath(
       state,
@@ -738,11 +749,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const { gameState, prng } = get();
     if (!gameState || gameState.isGameOver) return;
 
-    const rng = prng || new SeededRandom(gameState.seed);
+    const rng = prng || rngFromGameState(gameState);
     const events = get().contentEvents.length ? get().contentEvents : ALL_LIFE_EVENTS;
     const result = stepSimulationMonth(gameState, events, rng);
+    const nextState = withRngState(result.nextState, rng);
 
-    if (result.nextState.bankAccount.giroBalance < 0 && gameState.bankAccount.giroBalance >= 0) {
+    if (nextState.bankAccount.giroBalance < 0 && gameState.bankAccount.giroBalance >= 0) {
       sound.playWarning();
     } else {
       sound.playCoin();
@@ -752,42 +764,45 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       sound.playEventAlert();
     }
 
-    if (result.nextState.isGameOver) {
+    if (nextState.isGameOver) {
       sound.playFanfare();
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
       set({
-        gameState: result.nextState,
+        gameState: nextState,
+        prng: rng,
         gamePhase: 'EVALUATION',
       });
-      persistLocal(result.nextState);
-      void maybeCloudSave(result.nextState, true);
+      persistLocal(nextState);
+      void maybeCloudSave(nextState, true);
       return;
     }
 
     set({
-      gameState: result.nextState,
+      gameState: nextState,
       prng: rng,
     });
 
-    persistLocal(result.nextState);
-    void maybeCloudSave(result.nextState, Boolean(result.triggeredEvent));
+    persistLocal(nextState);
+    void maybeCloudSave(nextState, Boolean(result.triggeredEvent));
   },
 
   stepYear: () => {
     const { gameState, prng } = get();
     if (!gameState || gameState.isGameOver) return;
 
-    const rng = prng || new SeededRandom(gameState.seed);
+    const rng = prng || rngFromGameState(gameState);
     let state = gameState;
 
     for (let i = 0; i < 12; i++) {
       if (state.isGameOver) break;
       const events = get().contentEvents.length ? get().contentEvents : ALL_LIFE_EVENTS;
       const res = stepSimulationMonth(state, events, rng);
-      state = res.nextState;
+      state = withRngState(res.nextState, rng);
       if (res.triggeredEvent) {
         sound.playEventAlert();
         set({ gameState: state, prng: rng });
+        persistLocal(state);
+        void maybeCloudSave(state, true);
         return;
       }
     }
@@ -796,10 +811,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (state.isGameOver) {
       sound.playFanfare();
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
-      set({ gameState: state, gamePhase: 'EVALUATION' });
+      set({ gameState: state, prng: rng, gamePhase: 'EVALUATION' });
     } else {
       set({ gameState: state, prng: rng });
     }
+    persistLocal(state);
+    void maybeCloudSave(state, true);
   },
 
   togglePause: () => {
@@ -984,8 +1001,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const { gameState, prng } = get();
     if (!gameState) return;
 
-    const rng = prng || new SeededRandom(gameState.seed);
-    const { state: updated, result } = requestSalaryRaise(gameState, mode, rng);
+    const rng = prng || rngFromGameState(gameState);
+    const { state: updatedRaw, result } = requestSalaryRaise(gameState, mode, rng);
+    const updated = withRngState(updatedRaw, rng);
 
     if (!result.ok || result.kind === 'hard_fail') {
       sound.playWarning();
@@ -1141,7 +1159,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       sound.playFanfare();
       set({
         gameState: sanitized,
-        prng: new SeededRandom(sanitized.seed),
+        prng: rngFromGameState(sanitized),
         gamePhase: sanitized.isGameOver ? 'EVALUATION' : 'PLAYING',
         activeModal: null,
         eventChoiceFeedback: null,
@@ -1171,7 +1189,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       sound.playFanfare();
       set({
         gameState: sanitized,
-        prng: new SeededRandom(sanitized.seed),
+        prng: rngFromGameState(sanitized),
         gamePhase: sanitized.isGameOver ? 'EVALUATION' : 'PLAYING',
         activeModal: null,
         eventChoiceFeedback: null,

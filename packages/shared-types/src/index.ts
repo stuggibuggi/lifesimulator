@@ -463,6 +463,8 @@ export type TownLocationId =
 export interface GameState {
   version: string;
   seed: number;
+  /** Mulberry32 internal state for cross-client/server continuity */
+  rngState?: number;
   currentAge: number;
   currentYear: number; // Alter 16 bis 67 (Jahr 1 bis 51)
   currentMonth: number; // 1 bis 12

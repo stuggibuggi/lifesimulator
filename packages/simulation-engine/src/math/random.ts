@@ -12,6 +12,19 @@ export class SeededRandom {
     }
   }
 
+  getState(): number {
+    return this.state >>> 0;
+  }
+
+  static fromState(state: number): SeededRandom {
+    const rng = new SeededRandom(1);
+    rng.state = state >>> 0;
+    if (rng.state === 0) {
+      rng.state = 1;
+    }
+    return rng;
+  }
+
   /**
    * Gibt eine Pseudozufallszahl zwischen 0 (inklusive) und 1 (exklusive) zurück.
    */
