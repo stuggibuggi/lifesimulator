@@ -1,10 +1,10 @@
-# API Contract: `POST /api/runs/:id/actions` (Phase E preview)
+# API Contract: `POST /api/runs/:id/actions` (Phase E4)
 
-> **Status:** Contract only (Phase D4). **Not implemented** in runtime.  
-> Client continues to call local `stepSimulationMonth` / `applyEventChoice`.  
-> Implementation target: Phase E4 (Server-sim MVP).
+> **Status:** Implemented in Phase E4 (runtime).  
+> Client uses this endpoint for classroom/cloud sessions when `VITE_SERVER_SIM=1`.  
+> Solo/offline continues to call local `stepSimulationMonth` / `applyEventChoice`.
 
-Related: [`architecture-simulation-boundary.md`](./architecture-simulation-boundary.md), program spec §5.
+Related: [`architecture-simulation-boundary.md`](./architecture-simulation-boundary.md), `docs/superpowers/specs/2026-08-27-phase-e4-server-sim-mvp-design.md`.
 
 ## Purpose
 
@@ -86,7 +86,7 @@ Define a versioned, idempotent server endpoint that advances a cloud-backed game
 | `404` | Run not found |
 | `409` | Age/month mismatch, engine/content version mismatch, or conflicting active event |
 | `422` | Malformed action / unknown choice |
-| `501` | Endpoint not implemented yet (current Phase D behavior if stubbed) |
+| `501` | _(removed in E4 — endpoint is implemented)_ |
 
 ## Idempotency
 
@@ -116,3 +116,5 @@ Future table sketch:
 1. Feature flag `VITE_SERVER_SIM=1`
 2. Classroom cloud sessions use this endpoint; solo/offline keep local engine
 3. Parity tests compare local vs server for seeded scenarios
+4. API build must run `npm run build` / `bundle:sim` so `engine.bundle.mjs` exists before `node app.js`
+5. Optional `SERVER_SIM_STRICT=1` blocks Cloud-Save PUTs that change age/month

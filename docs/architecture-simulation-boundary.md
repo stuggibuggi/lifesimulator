@@ -2,25 +2,24 @@
 
 Phase D keeps month simulation in the client-side simulation engine. The API remains responsible for authentication, classroom membership, cloud-save state sync, published content, optional tip enhancement, and teacher OIDC — **not** month transitions.
 
-## Current Boundary
+## Current Boundary (E4)
 
-- `stepSimulationMonth` and related gameplay rules stay in `packages/simulation-engine`.
-- `player-web` advances months locally and persists the resulting `gameState` through the existing run save endpoint.
-- `apps/api` stores and returns serialized game state, but does not compute month transitions.
+- Classroom/cloud sessions with `VITE_SERVER_SIM=1` advance months and event choices through `POST /api/runs/:id/actions` using `@goal/simulation-engine` on the API.
+- Solo/offline (or flag off) still uses client `stepSimulationMonth` / `applyEventChoice`.
+- Other actions (insurance, savings, housing, career, …) remain client-side and are **not** cloud-overwritten after server month/event steps.
+- `GameState.rngState` keeps Mulberry32 continuity across client and server.
 
-This preserves the current offline-friendly classroom flow: gameplay stays responsive even when cloud-save is unavailable, and the API does not need to mirror every engine dependency or content package at runtime.
+See [`api-runs-actions-contract.md`](./api-runs-actions-contract.md) and the E4 design spec for details.
 
-## Why Not Server-Side Simulation Yet
+## Why Not Full Server Simulation Yet
 
-Server-side month simulation would require a stronger contract than Phase D implements at runtime:
+Server-side month simulation for **all** player actions would still require:
 
-- versioned engine/content packages on the API host
-- migration rules for old saved states
-- idempotency and replay protection for month advancement
-- server validation of every user action that can affect simulation state
-- broader API tests around score, events, taxes, careers, and certificates
+- every mutable action as a versioned API operation
+- richer offline fallback and parity coverage (E5)
+- broader API tests around careers, taxes, certificates
 
-Adding those pieces partially would create two sources of truth. Phase **D4** therefore ships the **API contract only** (see [`api-runs-actions-contract.md`](./api-runs-actions-contract.md)). Runtime cutover is Phase **E4**.
+E4 therefore implements the D4 contract for `STEP_MONTH` + `EVENT_CHOICE` only (A1).
 
 ## Contract Preview (D4)
 
